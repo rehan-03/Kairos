@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "name": "Kairos",
+  "kind": "next-unified",
+  "stack": {
+    "frontend": "next",
+    "backend": "",
+    "database": "postgres",
+    "orm": "prisma",
+    "architecture": "modular_monolith"
+  },
+  "services": [
+    {
+      "name": "web",
+      "root": ".",
+      "runtime": "node",
+      "runtimeVersion": "22",
+      "install": "npm ci",
+      "build": "npm run build",
+      "start": "npm run start",
+      "port": 3000,
+      "health": "/",
+      "output": ".next"
+    }
+  ],
+  "routing": {
+    "apiPrefix": "/__nexen_api"
+  },
+  "database": {
+    "engine": "postgres",
+    "orm": "prisma",
+    "envVar": "DATABASE_URL",
+    "schemaPath": "prisma/schema.prisma"
+  },
+  "env": [
+    {
+      "name": "ANTHROPIC_API_KEY",
+      "class": "secret",
+      "required": true
+    },
+    {
+      "name": "AUTH_SECRET",
+      "class": "generated",
+      "required": true
+    },
+    {
+      "name": "DATABASE_URL",
+      "class": "managed",
+      "required": true
+    },
+    {
+      "name": "MOCK_MODE",
+      "class": "forbidden"
+    },
+    {
+      "name": "NEXT_PUBLIC_MOCK_MODE",
+      "class": "forbidden"
+    },
+    {
+      "name": "SESSION_COOKIE_NAME",
+      "class": "secret",
+      "required": false
+    },
+    {
+      "name": "UPI_ID",
+      "class": "secret",
+      "required": true
+    }
+  ],
+  "publishable": {
+    "ok": true,
+    "reasons": []
+  }
+}

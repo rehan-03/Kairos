@@ -34,3 +34,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Nexen — secrets and diagnostics
+.env
+.env.*.local
+.codebenders/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Nexen preview build output
+.next-nexen

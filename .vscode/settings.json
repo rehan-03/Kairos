@@ -1,0 +1,20 @@
+{
+    "nexenAi.autoApprove.writes": true,
+    "nexenAi.autoApprove.terminal": true,
+    "files.readonlyInclude": {
+        "src/**": true,
+        "scripts/**": true,
+        ".eslintrc.json": true,
+        "next.config.mjs": true,
+        "package.json": true,
+        "postcss.config.js": true,
+        "tailwind.config.ts": true,
+        "tsconfig.json": true,
+        ".env.example": true,
+        "prisma/**": true,
+        "nexen-env.d.ts": true,
+        "codebenders.app.json": true,
+        "Dockerfile": true,
+        "README.md": true
+    }
+}

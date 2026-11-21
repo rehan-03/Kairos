@@ -1,0 +1,168 @@
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum BillingType {
+  recurring
+  one_off
+}
+
+enum InvoiceStatus {
+  draft
+  sent
+  partial
+  paid
+  overdue
+}
+
+enum PaymentMethod {
+  upi
+  cash
+  other
+}
+
+enum ReminderTone {
+  friendly
+  firm
+  final
+}
+
+enum DraftSource {
+  ai
+  template
+}
+
+enum ReminderLanguage {
+  english
+  hinglish
+}
+
+enum ReminderChannel {
+  whatsapp
+  clipboard
+}
+
+enum ReminderStatus {
+  draft
+  sent
+}
+
+enum BillRecurrence {
+  one_off
+  monthly
+}
+
+model Customer {
+  id                String       @id @default(uuid()) @db.Uuid
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt         DateTime     @updatedAt @map("updated_at") @db.Timestamp(3)
+  name              String
+  contactName       String?      @map("contact_name")
+  phone             String
+  billingType       BillingType  @map("billing_type")
+  defaultAmount     Decimal      @map("default_amount") @db.Decimal(12, 2)
+  billingDay        Int?         @map("billing_day")
+  typicalDelayDays  Int?         @default(3) @map("typical_delay_days")
+  archivedAt        DateTime?    @map("archived_at") @db.Timestamp(3)
+
+  invoices          Invoice[]    @relation("CustomerInvoices")
+  payments          Payment[]    @relation("CustomerPayments")
+
+  @@map("customers")
+}
+
+model Invoice {
+  id                  String        @id @default(uuid()) @db.Uuid
+  createdAt           DateTime      @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt           DateTime      @updatedAt @map("updated_at") @db.Timestamp(3)
+  customerId          String        @map("customer_id") @db.Uuid
+  billingType         BillingType   @map("billing_type")
+  billingPeriod       String?       @map("billing_period")
+  description         String?
+  amount              Decimal       @db.Decimal(12, 2)
+  outstandingAmount   Decimal?      @map("outstanding_amount") @db.Decimal(12, 2)
+  status              InvoiceStatus @default(draft)
+  issueDate           DateTime      @map("issue_date") @db.Date
+  dueDate             DateTime      @map("due_date") @db.Date
+  sentAt              DateTime?     @map("sent_at") @db.Timestamp(3)
+  lastReminderAt      DateTime?     @map("last_reminder_at") @db.Timestamp(3)
+  expectedReceiptDate DateTime?     @map("expected_receipt_date") @db.Date
+
+  customer            Customer      @relation("CustomerInvoices", fields: [customerId], references: [id])
+  payments            Payment[]     @relation("InvoicePayments")
+  reminders           Reminder[]    @relation("InvoiceReminders")
+
+  @@index([customerId])
+  @@index([status])
+  @@map("invoices")
+}
+
+model Payment {
+  id          String        @id @default(uuid()) @db.Uuid
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamp(3)
+  invoiceId   String        @map("invoice_id") @db.Uuid
+  customerId  String        @map("customer_id") @db.Uuid
+  amount      Decimal       @db.Decimal(12, 2)
+  method      PaymentMethod
+  paidOn      DateTime      @map("paid_on") @db.Date
+
+  invoice     Invoice       @relation("InvoicePayments", fields: [invoiceId], references: [id])
+  customer    Customer      @relation("CustomerPayments", fields: [customerId], references: [id])
+
+  @@index([invoiceId])
+  @@index([customerId])
+  @@map("payments")
+}
+
+model Reminder {
+  id          String           @id @default(uuid()) @db.Uuid
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamp(3)
+  invoiceId   String           @map("invoice_id") @db.Uuid
+  tone        ReminderTone
+  draftSource DraftSource      @default(template) @map("draft_source")
+  language    ReminderLanguage @default(english)
+  channel     ReminderChannel?
+  messageBody String           @map("message_body") @db.Text
+  status      ReminderStatus   @default(draft)
+  sentAt      DateTime?        @map("sent_at") @db.Timestamp(3)
+
+  invoice     Invoice          @relation("InvoiceReminders", fields: [invoiceId], references: [id])
+
+  @@index([invoiceId])
+  @@map("reminders")
+}
+
+model Bill {
+  id          String         @id @default(uuid()) @db.Uuid
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt   DateTime       @updatedAt @map("updated_at") @db.Timestamp(3)
+  name        String
+  amount      Decimal        @db.Decimal(12, 2)
+  dueDate     DateTime       @map("due_date") @db.Date
+  recurrence  BillRecurrence @default(one_off)
+  archivedAt  DateTime?      @map("archived_at") @db.Timestamp(3)
+
+  @@map("bills")
+}
+
+model Setting {
+  id              String           @id @default(uuid()) @db.Uuid
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamp(3)
+  openingCash     Decimal          @map("opening_cash") @db.Decimal(12, 2)
+  openingCashDate DateTime         @map("opening_cash_date") @db.Date
+  cashBuffer      Decimal          @default(5000) @map("cash_buffer") @db.Decimal(12, 2)
+  upiId           String           @map("upi_id")
+  defaultDueDays  Int              @default(5) @map("default_due_days")
+  reminderLanguage ReminderLanguage @default(english) @map("reminder_language")
+
+  @@map("settings")
+}
