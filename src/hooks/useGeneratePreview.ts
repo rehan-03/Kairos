@@ -35,8 +35,18 @@ export function useGeneratePreview(period?: string) {
     setError(null);
     setErrorStatus(null);
     try {
-      const data = await getInvoiceGeneratePreview({ period: period ?? currentPeriod() });
-      setPreview(data as GeneratePreview);
+      const data: any = await getInvoiceGeneratePreview({ period: period ?? currentPeriod() });
+      if (Array.isArray(data)) {
+        setPreview({ period: period ?? currentPeriod(), customers: data });
+      } else if (data && typeof data === 'object') {
+        const rows = data.customers ?? data.rows ?? data.data ?? [];
+        setPreview({
+          period: data.period ?? (period ?? currentPeriod()),
+          customers: Array.isArray(rows) ? rows : [],
+        });
+      } else {
+        setPreview(null);
+      }
     } catch (err) {
       setPreview(null);
       if (err instanceof ApiError) {
@@ -61,10 +71,14 @@ export function useGeneratePreview(period?: string) {
         return null;
       }
 
-      const rawList: any[] = Array.isArray(preview?.customers)
+      const rawList: any[] = Array.isArray(preview)
+        ? preview
+        : Array.isArray(preview?.customers)
         ? preview.customers
         : Array.isArray((preview as any)?.rows)
         ? (preview as any).rows
+        : Array.isArray((preview as any)?.data)
+        ? (preview as any).data
         : [];
       const ids =
         customerIds ??
@@ -81,7 +95,7 @@ export function useGeneratePreview(period?: string) {
       setError(null);
       try {
         const result = await createInvoiceGenerate({
-          period: preview.period,
+          period: preview.period ?? currentPeriod(),
           customer_ids: ids,
         });
         await load();
@@ -96,10 +110,14 @@ export function useGeneratePreview(period?: string) {
     [preview, load],
   );
 
-  const rawList: any[] = Array.isArray(preview?.customers)
+  const rawList: any[] = Array.isArray(preview)
+    ? preview
+    : Array.isArray(preview?.customers)
     ? preview.customers
     : Array.isArray((preview as any)?.rows)
     ? (preview as any).rows
+    : Array.isArray((preview as any)?.data)
+    ? (preview as any).data
     : [];
 
   const customers: GenerateCustomerRow[] = rawList.map((r: any) => ({

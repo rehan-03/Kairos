@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
+import { Sparkles } from 'lucide-react';
 import { ApiError, createCustomer } from '@/lib/api';
 
 type BillingChoice = 'recurring' | 'one_off';
@@ -87,6 +88,19 @@ export default function CustomerForm() {
     setErrors((prev) => ({ ...prev, [key]: undefined }));
   }
 
+  function handleDemoAutofill() {
+    setErrors({});
+    setServerError(null);
+    setForm({
+      name: 'Aarav Sharma',
+      contactName: 'Sunita Sharma (Mother)',
+      phone: '9822015367',
+      billingType: 'recurring',
+      defaultAmount: '3000',
+      billingDay: '5',
+    });
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const found = validateCustomer(form);
@@ -128,7 +142,17 @@ export default function CustomerForm() {
       )}
 
       <section className="space-y-4 p-4 sm:p-6">
-        <h2 className="text-base font-semibold text-foreground">Contact details</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
+          <h2 className="text-base font-semibold text-foreground">Contact details</h2>
+          <button
+            type="button"
+            onClick={handleDemoAutofill}
+            className="inline-flex items-center gap-1.5 rounded-[var(--radius)] border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>Demo autofill</span>
+          </button>
+        </div>
 
         <label className="flex flex-col gap-1">
           <span className="text-sm font-medium text-foreground">
@@ -254,20 +278,30 @@ export default function CustomerForm() {
         )}
       </section>
 
-      <div className="flex flex-col-reverse gap-3 border-t border-border p-4 sm:flex-row sm:items-center sm:justify-end sm:p-6">
-        <Link
-          href="/customers"
-          className="inline-flex items-center justify-center rounded-[var(--radius)] px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
-        >
-          Cancel
-        </Link>
+      <div className="flex flex-col-reverse gap-3 border-t border-border p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <button
-          type="submit"
-          disabled={isSaving}
-          className="inline-flex items-center justify-center rounded-[var(--radius)] bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm disabled:opacity-60"
+          type="button"
+          onClick={handleDemoAutofill}
+          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-[var(--radius)] border border-border bg-card px-3 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
         >
-          {isSaving ? 'Saving…' : 'Save customer'}
+          <Sparkles className="h-3.5 w-3.5" />
+          <span>Demo autofill</span>
         </button>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/customers"
+            className="inline-flex items-center justify-center rounded-[var(--radius)] px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+          >
+            Cancel
+          </Link>
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="inline-flex items-center justify-center rounded-[var(--radius)] bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm disabled:opacity-60"
+          >
+            {isSaving ? 'Saving…' : 'Save customer'}
+          </button>
+        </div>
       </div>
     </form>
   );
