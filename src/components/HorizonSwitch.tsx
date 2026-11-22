@@ -9,10 +9,10 @@ interface HorizonSwitchProps {
   disabled?: boolean;
 }
 
-const OPTIONS: { value: HorizonValue; label: string }[] = [
+const OPTIONS: { value: HorizonValue; label: string; comingSoon?: boolean }[] = [
   { value: '30', label: '30 days' },
-  { value: '60', label: '60 days' },
-  { value: '90', label: '90 days' },
+  { value: '60', label: '60 days (coming soon)', comingSoon: true },
+  { value: '90', label: '90 days (coming soon)', comingSoon: true },
 ];
 
 export default function HorizonSwitch(props: HorizonSwitchProps) {
@@ -39,7 +39,7 @@ export default function HorizonSwitch(props: HorizonSwitchProps) {
             key={option.value}
             type="button"
             aria-pressed={isActive}
-            disabled={disabled}
+            disabled={disabled || option.comingSoon}
             onClick={() => handleSelect(option.value)}
             className={[
               'min-w-0 flex-1 rounded-[calc(var(--radius)-2px)] px-3 py-1.5 text-sm font-medium transition-colors',
