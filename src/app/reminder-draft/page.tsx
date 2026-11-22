@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import PageHeader from '@/components/PageHeader';
 import FactsStrip from '@/components/FactsStrip';
 import ToneSelector from '@/components/ToneSelector';
 import ReminderDraftEditor from '@/components/ReminderDraftEditor';
-import WhatsAppSendButton from '@/components/WhatsAppSendButton';
 import {
   createInvoiceReminder,
   createReminderSend,
@@ -13,8 +12,11 @@ import {
   getInvoices,
   getReminderById,
   getSettings,
+  invalidateApiCache,
 } from '@/lib/api';
+import { buildWhatsAppLink } from '@/lib/whatsapp';
 import type { Reminder } from '@/types/reminder';
+import { MessageCircle, Copy, CheckCircle2 } from 'lucide-react';
 
 type ReminderTone = 'friendly' | 'firm' | 'final';
 
@@ -58,17 +60,23 @@ function validateDraft(body: string, invoice: OpenInvoice, upiId: string): strin
 export default function ReminderDraftPage({
   searchParams,
 }: {
-  searchParams?: { invoiceId?: string };
+  searchParams?: { invoiceId?: string; invoice?: string };
 }) {
   const [invoices, setInvoices] = useState<OpenInvoice[] | null>(null);
   const [upiId, setUpiId] = useState('');
   const [phone, setPhone] = useState('');
-  const [invoiceId, setInvoiceId] = useState<string>(searchParams?.invoiceId ?? '');
+  const [demoSafeWhatsApp, setDemoSafeWhatsApp] = useState(true);
+  const [invoiceId, setInvoiceId] = useState<string>(
+    searchParams?.invoiceId ?? searchParams?.invoice ?? '',
+  );
   const [reminder, setReminder] = useState<Reminder | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDrafting, setIsDrafting] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [copyFailed, setCopyFailed] = useState(false);
+  const fallbackTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const invoice = invoices?.find((i) => i.id === invoiceId) ?? null;
   const isSent = reminder?.status === 'sent';
@@ -76,7 +84,11 @@ export default function ReminderDraftPage({
   async function load() {
     setIsLoading(true);
     try {
-      const [rows, settings, customers] = await Promise.all([getInvoices(), getSettings(), getCustomers()]);
+      const [rows, settings, customers] = await Promise.all([
+        getInvoices(),
+        getSettings(),
+        getCustomers(),
+      ]);
       setInvoices(
         rows
           .filter((r) => OPEN_STATUSES.includes(r.status) && r.remaining_balance > 0)
@@ -88,7 +100,9 @@ export default function ReminderDraftPage({
             status: r.status,
           })),
       );
-      setUpiId(settings[0]?.upiId ?? '');
+      const activeSetting = settings[0];
+      setUpiId(activeSetting?.upiId ?? '');
+      setDemoSafeWhatsApp(activeSetting?.demoSafeWhatsApp ?? true);
       setCustomerPhone(customers);
     } catch (e) {
       setError(errorMessage(e));
@@ -105,6 +119,11 @@ export default function ReminderDraftPage({
 
   useEffect(() => {
     void load();
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlInvoice = params.get('invoice') ?? params.get('invoiceId');
+      if (urlInvoice) setInvoiceId(urlInvoice);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -124,6 +143,7 @@ export default function ReminderDraftPage({
     setReminder(null);
     setError(null);
     setNotice(null);
+    setCopyFailed(false);
   }
 
   async function draftFor(tone: ReminderTone) {
@@ -138,6 +158,7 @@ export default function ReminderDraftPage({
     setIsDrafting(true);
     setError(null);
     setNotice(null);
+    setCopyFailed(false);
     try {
       const created = await createInvoiceReminder(invoice.id, { tone });
       const stored = await getReminderById(created.id);
@@ -149,19 +170,79 @@ export default function ReminderDraftPage({
     }
   }
 
-  async function handleSent() {
+  // Open in WhatsApp: Synchronous click handler navigation, logs as sent in background
+  function handleOpenWhatsApp(e: React.MouseEvent<HTMLAnchorElement>) {
+    if (sendError) {
+      e.preventDefault();
+      setError(sendError);
+      return;
+    }
+    // Synchronous open happens natively via the <a href="..." target="_blank">
+    // Background log as sent:
+    void logReminderSent();
+    setNotice('WhatsApp opened with your reminder ready. Logged as sent.');
+  }
+
+  async function logReminderSent() {
     if (!reminder) return;
     try {
-      await createReminderSend(reminder.id, {});
+      await createReminderSend(reminder.id, { channel: 'whatsapp' });
       const fresh = await getReminderById(reminder.id);
       setReminder(fresh);
-      setNotice('Reminder logged. The invoice status is unchanged.');
+      invalidateApiCache();
+    } catch (e) {
+      console.warn('Logging reminder failed:', e);
+    }
+  }
+
+  // Copy message handler
+  async function handleCopyMessage() {
+    if (!reminder) return;
+    setError(null);
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(reminder.messageBody);
+        setNotice('Message copied to clipboard.');
+        setCopyFailed(false);
+        return;
+      }
+      throw new Error('Clipboard API unavailable');
+    } catch {
+      // Fallback to selectable text box
+      setCopyFailed(true);
+      setNotice('Could not access clipboard automatically. Please copy the message text below:');
+      setTimeout(() => {
+        if (fallbackTextareaRef.current) {
+          fallbackTextareaRef.current.focus();
+          fallbackTextareaRef.current.select();
+        }
+      }, 50);
+    }
+  }
+
+  // Explicit Mark as Sent handler
+  async function handleMarkAsSent() {
+    if (!reminder) return;
+    setIsSending(true);
+    setError(null);
+    try {
+      await createReminderSend(reminder.id, { channel: 'whatsapp' });
+      const fresh = await getReminderById(reminder.id);
+      setReminder(fresh);
+      invalidateApiCache();
+      setNotice('Reminder marked as sent. Dashboard updated.');
     } catch (e) {
       setError(errorMessage(e));
+    } finally {
+      setIsSending(false);
     }
   }
 
   const sendError = reminder && invoice ? validateDraft(reminder.messageBody, invoice, upiId) : null;
+
+  // Compute WhatsApp link based on demoSafeWhatsApp setting
+  const targetRecipientPhone = demoSafeWhatsApp ? null : phone;
+  const whatsappUrl = reminder ? buildWhatsAppLink(reminder.messageBody, targetRecipientPhone) : '#';
 
   return (
     <main data-nexen-component="nx_app_reminder_draft_page" className="mx-auto w-full max-w-2xl min-w-0 space-y-4 bg-background p-4 text-foreground">
@@ -234,29 +315,79 @@ export default function ReminderDraftPage({
             )}
 
             {reminder && isSent && (
-              <p className="whitespace-pre-wrap rounded-[var(--radius)] border border-border bg-background p-3 text-sm">
-                {reminder.messageBody}
-              </p>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>This reminder has been logged as sent.</span>
+                </div>
+                <p className="whitespace-pre-wrap rounded-[var(--radius)] border border-border bg-background p-3 text-sm">
+                  {reminder.messageBody}
+                </p>
+              </div>
             )}
 
+            {/* Three Action Buttons: Open in WhatsApp, Copy message, Mark as sent */}
             {reminder && (
-              <div
-                className="w-full min-w-0"
-                onClickCapture={(e) => {
-                  if (sendError) {
-                    e.stopPropagation();
-                    setError(sendError);
-                  }
-                }}
-              >
-                <WhatsAppSendButton
-                  phone={phone}
-                  message={reminder.messageBody}
-                  label={isSent ? 'Reminder sent' : 'Send on WhatsApp'}
-                  disabled={isSent || isDrafting || !phone}
-                  className="w-full"
-                  onSent={() => void handleSent()}
-                />
+              <div className="space-y-3 pt-2">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {/* 1. Open in WhatsApp */}
+                  <a
+                    href={whatsappUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={handleOpenWhatsApp}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 text-sm font-semibold shadow-sm transition active:scale-[0.99] cursor-pointer"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    <span>Open in WhatsApp</span>
+                  </a>
+
+                  {/* 2. Copy message */}
+                  <button
+                    type="button"
+                    onClick={handleCopyMessage}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background hover:bg-muted text-foreground px-4 text-sm font-semibold shadow-xs transition active:scale-[0.99] cursor-pointer"
+                  >
+                    <Copy className="h-4 w-4" />
+                    <span>Copy message</span>
+                  </button>
+
+                  {/* 3. Mark as sent */}
+                  <button
+                    type="button"
+                    onClick={handleMarkAsSent}
+                    disabled={isSent || isSending}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background hover:bg-muted text-foreground px-4 text-sm font-semibold shadow-xs transition active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                  >
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    <span>{isSent ? 'Marked as sent' : 'Mark as sent'}</span>
+                  </button>
+                </div>
+
+                {/* Helper text about demo-safe setting */}
+                <p className="text-[11px] text-muted-foreground">
+                  {demoSafeWhatsApp
+                    ? 'Demo-safe mode active: WhatsApp will open composer without recipient number.'
+                    : `Recipient: ${phone || 'No phone number configured'}`}
+                </p>
+
+                {/* Selectable text box fallback if Clipboard API fails */}
+                {copyFailed && (
+                  <div className="space-y-1.5 rounded-xl border border-amber-300 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/40 p-3">
+                    <label htmlFor="copy-fallback" className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+                      Copy message manually (Ctrl+C):
+                    </label>
+                    <textarea
+                      id="copy-fallback"
+                      ref={fallbackTextareaRef}
+                      readOnly
+                      rows={4}
+                      value={reminder.messageBody}
+                      className="w-full text-xs font-mono p-2.5 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </>

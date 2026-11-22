@@ -423,6 +423,7 @@ export async function listOpenInvoicesForDashboard(_userId: string) {
       amount,
       paidAmount: paid,
       dueDate: row.dueDate.toISOString().slice(0, 10),
+      lastReminderAt: row.lastReminderAt ? row.lastReminderAt.toISOString() : null,
       expectedDelayDays: null,
     });
   }

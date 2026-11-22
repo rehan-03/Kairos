@@ -57,6 +57,8 @@ export interface ChasePriorityItem {
   priorityScore: number;
   /** Prefilled chase / reminder entry point for this invoice. */
   actionHref: string;
+  /** ISO timestamp of when the last reminder was sent, or null. */
+  lastReminderAt?: string | null;
 }
 
 export interface DashboardTotals {

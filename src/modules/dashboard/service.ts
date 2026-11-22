@@ -26,6 +26,7 @@ type DashboardInvoiceRow = {
   paidAmount: number;
   dueDate: IsoDate;
   expectedDelayDays: number | null;
+  lastReminderAt?: string | null;
 };
 
 type BucketDefinition = {
@@ -150,6 +151,7 @@ export async function getDashboardView(userId: string = 'demo-user'): Promise<Da
         closesForecastGap: Boolean(cashGap && inWindow),
         priorityScore: round2(score),
         actionHref: `/reminder-draft?invoice=${row.id}`,
+        lastReminderAt: row.lastReminderAt ?? null,
       },
     });
   }
