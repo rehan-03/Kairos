@@ -1,5 +1,6 @@
 
 import { updateSetting } from '@/lib/api';
+import { DEFAULT_CASH_BUFFER } from '@/lib/format';
 
 export type OnboardingStepId = 'upi' | 'cash' | 'billing' | 'customer';
 
@@ -52,7 +53,7 @@ export const ONBOARDING_STEPS: ReadonlyArray<OnboardingStep> = [
 export const ONBOARDING_DEFAULTS: OnboardingValues = {
   upiId: '',
   openingCash: 0,
-  cashBuffer: 20000,
+  cashBuffer: DEFAULT_CASH_BUFFER,
   defaultDueDays: 7,
   reminderLanguage: 'english',
 };

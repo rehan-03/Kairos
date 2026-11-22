@@ -1,5 +1,6 @@
 import { createGroqChatCompletion, getGroqApiKey } from '@/lib/ai';
 import { db } from '@/lib/db';
+import { DEFAULT_CASH_BUFFER, formatINR } from '@/lib/format';
 
 export class ForecastValidationError extends Error {
   constructor(message: string) {
@@ -54,7 +55,6 @@ interface CashForecastResult {
 }
 
 const DAY_MS = 86_400_000;
-const DEFAULT_CASH_BUFFER = 5000;
 const DEFAULT_TYPICAL_DELAY_DAYS = 3;
 const AT_RISK_DAYS_FROM_TODAY = 7;
 const DELAY_HISTORY_SIZE = 3;
@@ -108,9 +108,6 @@ function sum(values: number[]): number {
   return values.reduce((acc, v) => acc + v, 0);
 }
 
-function formatInr(amount: number): string {
-  return `₹${Math.round(amount).toLocaleString('en-IN')}`;
-}
 
 /* ---------- Validation ---------- */
 
@@ -384,19 +381,19 @@ function templateSummary(facts: SummaryFacts): string {
   const parts: string[] = [];
   if (facts.firstBelowBufferDate) {
     parts.push(
-      `Balance drops below your ${formatInr(facts.cashBuffer)} buffer on ${facts.firstBelowBufferDate}.`,
+      `Balance drops below your ${formatINR(facts.cashBuffer)} buffer on ${facts.firstBelowBufferDate}.`,
     );
   } else {
     parts.push(
-      `Balance stays above your ${formatInr(facts.cashBuffer)} buffer for the next ${facts.horizonDays} days.`,
+      `Balance stays above your ${formatINR(facts.cashBuffer)} buffer for the next ${facts.horizonDays} days.`,
     );
   }
   parts.push(
-    `Lowest balance is ${formatInr(facts.lowestBalance)} on ${facts.lowestBalanceDate}.`,
+    `Lowest balance is ${formatINR(facts.lowestBalance)} on ${facts.lowestBalanceDate}.`,
   );
   if (facts.atRiskInflowCount > 0) {
     parts.push(
-      `${facts.atRiskInflowCount} overdue ${facts.atRiskInflowCount === 1 ? 'payment' : 'payments'} worth ${formatInr(facts.atRiskInflowAmount)} ${facts.atRiskInflowCount === 1 ? 'is' : 'are'} at risk of arriving late.`,
+      `${facts.atRiskInflowCount} overdue ${facts.atRiskInflowCount === 1 ? 'payment' : 'payments'} worth ${formatINR(facts.atRiskInflowAmount)} ${facts.atRiskInflowCount === 1 ? 'is' : 'are'} at risk of arriving late.`,
     );
   }
   return parts.join(' ');
@@ -418,7 +415,8 @@ async function buildSummary(
       systemPrompt:
         'You write a two-sentence plain-language cash forecast summary for a small business owner. ' +
         'Use ONLY the numbers, dates and counts in the JSON provided. Do not calculate, estimate, ' +
-        'or change any figure. Do not introduce amounts or dates that are not in the JSON.',
+        'or change any figure. Do not introduce amounts or dates that are not in the JSON. ' +
+        'Write every amount in Indian rupees using the ₹ symbol, never $.',
       userPrompt: JSON.stringify(facts),
     });
 

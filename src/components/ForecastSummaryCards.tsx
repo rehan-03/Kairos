@@ -1,3 +1,5 @@
+import { formatINR } from '@/lib/format';
+
 type Amount = number | string | null | undefined;
 
 export interface ForecastSummaryCardsProps {
@@ -9,12 +11,6 @@ export interface ForecastSummaryCardsProps {
   horizonDays?: 30 | 60 | 90;
 }
 
-const inr = new Intl.NumberFormat('en-IN', {
-  style: 'currency',
-  currency: 'INR',
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
 
 const dayFmt = new Intl.DateTimeFormat('en-IN', {
   weekday: 'short',
@@ -31,7 +27,7 @@ function toNumber(value: Amount): number | null {
 
 function formatAmount(value: Amount): string {
   const n = toNumber(value);
-  return n === null ? '—' : inr.format(n);
+  return n === null ? '—' : formatINR(n);
 }
 
 function formatDate(iso: string | null | undefined): string | null {

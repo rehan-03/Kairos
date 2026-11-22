@@ -1,4 +1,5 @@
 import { createGroqChatCompletion, getGroqApiKey } from '@/lib/ai';
+import { formatINR } from '@/lib/format';
 import { getInvoiceById, markInvoiceReminded } from '@/modules/invoices';
 import { getSettings } from '@/modules/settings';
 import { getCustomerById } from '@/modules/customers';
@@ -62,7 +63,7 @@ function isOpen(invoice: InvoiceFacts): boolean {
 }
 
 function formatAmount(value: number): string {
-  return `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+  return formatINR(value);
 }
 
 function formatDueDate(value: string | Date): string {

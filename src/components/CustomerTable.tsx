@@ -1,21 +1,15 @@
 import Link from 'next/link';
 import type { Customer } from '@/types/customer';
 import { ArrowUpRight, User } from 'lucide-react';
+import { formatINR } from '@/lib/format';
 
 interface CustomerTableProps {
   customers?: Customer[];
   emptyMessage?: string;
 }
 
-const rupees = new Intl.NumberFormat('en-IN', {
-  style: 'currency',
-  currency: 'INR',
-  maximumFractionDigits: 0,
-});
-
 function formatAmount(value: unknown): string {
-  const n = Number(value);
-  return Number.isFinite(n) ? rupees.format(n) : '—';
+  return formatINR(Number(value));
 }
 
 function billingLabel(type: unknown): string {

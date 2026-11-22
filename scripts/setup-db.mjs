@@ -70,7 +70,7 @@ if (!existsSync(schemaPath)) {
       // 'Seeded' must mean a row exists. The seed prints one of two
       // markers; ANY other outcome — including a silent success — is
       // reported as missing rather than assumed to have worked.
-      if (/\[seed\] demo-user: ok/.test(seedOut)) {
+      if (/\[seed\] demo-user: ok/.test(seedOut.toLowerCase())) {
         console.log('[setup-db] demo-user: ok');
       } else {
         const why = (/\[seed\] demo-user: MISSING — (.*)/.exec(seedOut) || [])[1]

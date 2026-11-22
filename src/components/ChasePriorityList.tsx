@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { BellRing, ArrowRight } from 'lucide-react';
+import { formatINR } from '@/lib/format';
 
 export interface ChasePriorityItem {
   invoiceId?: string;
@@ -22,12 +23,6 @@ export interface ChasePriorityListProps {
   items?: (ChasePriorityItem | Record<string, any>)[] | null;
 }
 
-const currencyFormat = new Intl.NumberFormat('en-IN', {
-  style: 'currency',
-  currency: 'INR',
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-});
 
 const weekdayFormat = new Intl.DateTimeFormat('en-IN', { weekday: 'short', timeZone: 'Asia/Kolkata' });
 const dayMonthFormat = new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' });
@@ -41,7 +36,7 @@ function formatDate(value?: string | null): string {
 
 function formatAmount(value: number | string): string {
   const numeric = typeof value === 'number' ? value : Number(value);
-  return currencyFormat.format(Number.isFinite(numeric) ? numeric : 0);
+  return formatINR(Number.isFinite(numeric) ? numeric : 0);
 }
 
 function getInitials(name: string): string {

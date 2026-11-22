@@ -1,3 +1,5 @@
+import { DEFAULT_CASH_BUFFER } from '@/lib/format';
+
 export interface ForecastPoint {
   date: string; // ISO date, YYYY-MM-DD
   balance: number;
@@ -27,7 +29,7 @@ function formatRupees(amount: number): string {
 }
 
 export default function ForecastChart(props: ForecastChartProps) {
-  const { points, cashBuffer = 5000, title = 'Daily projected balance', tone = 'base' } = props;
+  const { points, cashBuffer = DEFAULT_CASH_BUFFER, title = 'Daily projected balance', tone = 'base' } = props;
   const safePoints: ForecastPoint[] = Array.isArray(points) ? points : [];
 
   if (safePoints.length === 0) {

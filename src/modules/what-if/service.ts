@@ -1,9 +1,10 @@
 
 import { db } from '@/lib/db';
+import { DEFAULT_CASH_BUFFER } from '@/lib/format';
 
 const DAY_MS = 86_400_000;
 const DEFAULT_DELAY_DAYS = 3;
-const DEFAULT_CASH_BUFFER = 5000;
+
 const DEFAULT_HORIZON = 30;
 const PRESET_NAME = 'five_latest_payers_15_days_late';
 const PRESET_DELAY_DAYS = 15;

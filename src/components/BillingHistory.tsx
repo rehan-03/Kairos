@@ -1,5 +1,6 @@
 import type { Invoice } from '@/types/invoice';
 import type { Payment } from '@/types/payment';
+import { formatINR } from '@/lib/format';
 
 type Props = {
   invoices?: Invoice[] | null;
@@ -30,11 +31,7 @@ const dateFmt = new Intl.DateTimeFormat('en-IN', {
   year: 'numeric',
   timeZone: 'Asia/Kolkata',
 });
-const moneyFmt = new Intl.NumberFormat('en-IN', {
-  style: 'currency',
-  currency: 'INR',
-  maximumFractionDigits: 2,
-});
+
 
 function toTime(value: unknown): number {
   const t = new Date(value as string).getTime();
@@ -122,7 +119,7 @@ export default function BillingHistory(props: Props) {
                   }
                 >
                   {entry.kind === 'payment' ? '−' : ''}
-                  {moneyFmt.format(entry.amount)}
+                  {formatINR(entry.amount)}
                 </span>
               </li>
             ))}

@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { DEFAULT_CASH_BUFFER } from '@/lib/format';
 import { clearDemoData, seedDemoData } from '@/lib/demo-seed';
 import {
   createSetting as createSettingRow,
@@ -21,7 +22,7 @@ const MSG_DUE_DAYS = 'Default due days must be a whole number between 0 and 60.'
 const MSG_LANGUAGE = 'Choose English or Hinglish for reminder language.';
 
 const SEED_OPENING_CASH = 6000;
-const SEED_CASH_BUFFER = 5000;
+
 const SEED_UPI_ID = 'priya.studio@upi';
 const SEED_DEFAULT_DUE_DAYS = 5;
 const SEED_REMINDER_LANGUAGE: 'english' | 'hinglish' = 'english';
@@ -116,7 +117,7 @@ function seedSettingsData(): SettingCreateData {
   return {
     openingCash: SEED_OPENING_CASH,
     openingCashDate: startOfTodayUtc(),
-    cashBuffer: SEED_CASH_BUFFER,
+    cashBuffer: DEFAULT_CASH_BUFFER,
     upiId: SEED_UPI_ID,
     defaultDueDays: SEED_DEFAULT_DUE_DAYS,
     reminderLanguage: SEED_REMINDER_LANGUAGE,

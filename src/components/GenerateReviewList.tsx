@@ -1,3 +1,5 @@
+import { formatINR } from '@/lib/format';
+
 export interface GenerateReviewRow {
   id?: string;
   customer_id?: string;
@@ -17,7 +19,7 @@ interface GenerateReviewListProps {
 function formatRupees(value: number | string): string {
   const amount = Math.round(Number(value));
   if (!Number.isFinite(amount)) return '₹0';
-  return `₹${amount.toLocaleString('en-IN')}`;
+  return formatINR(amount);
 }
 
 function formatBillingDay(day: number | null | undefined): string {

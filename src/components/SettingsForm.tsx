@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { ApiError, updateSetting } from '@/lib/api';
 import type { Setting } from '@/types/setting';
+import { DEFAULT_CASH_BUFFER } from '@/lib/format';
 
 type Language = 'english' | 'hinglish';
 
@@ -23,7 +24,7 @@ type FieldErrors = Partial<Record<keyof FormValues, string>>;
 
 const DEFAULTS: FormValues = {
   openingCash: '0',
-  cashBuffer: '5000',
+  cashBuffer: String(DEFAULT_CASH_BUFFER),
   upiId: '',
   defaultDueDays: '5',
   reminderLanguage: 'english',

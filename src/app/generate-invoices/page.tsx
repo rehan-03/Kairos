@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import GenerateReviewList from '@/components/GenerateReviewList';
 import { useGeneratePreview } from '@/hooks/useGeneratePreview';
+import { formatINR } from '@/lib/format';
 
 type ReviewRowFields = {
   amount?: unknown;
@@ -19,7 +20,7 @@ function toAmount(value: unknown): number {
 }
 
 function formatRupees(value: number): string {
-  return `₹${value.toLocaleString('en-IN')}`;
+  return formatINR(value);
 }
 
 export default function GenerateInvoicesPage() {

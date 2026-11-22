@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import BillForm from '@/components/BillForm';
 import ArchiveSection from '@/components/ArchiveSection';
 import { ApiError, createBillArchive, getBillById, updateBill } from '@/lib/api';
+import { formatINR } from '@/lib/format';
 import type { Bill } from '@/types/bill';
 
 type FormValues = {
@@ -25,7 +26,7 @@ function parseDay(iso: string): Date {
 }
 
 function formatRupees(value: number | string): string {
-  return `₹${Math.round(Number(value)).toLocaleString('en-IN')}`;
+  return formatINR(Number(value));
 }
 
 function formatDue(iso: string): string {

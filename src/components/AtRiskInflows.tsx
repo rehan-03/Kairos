@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { formatINR } from '@/lib/format';
 
 export type AtRiskInflow = {
   id: string;
@@ -13,11 +14,6 @@ type AtRiskInflowsProps = {
   inflows?: AtRiskInflow[] | null;
 };
 
-const money = new Intl.NumberFormat('en-IN', {
-  style: 'currency',
-  currency: 'INR',
-  minimumFractionDigits: 2,
-});
 
 const dayFormat = new Intl.DateTimeFormat('en-IN', {
   weekday: 'short',
@@ -37,8 +33,7 @@ function firstName(fullName: string): string {
 }
 
 function formatAmount(value: number | string): string {
-  const amount = Number(value);
-  return Number.isFinite(amount) ? money.format(amount) : String(value);
+  return formatINR(value);
 }
 
 export default function AtRiskInflows({ inflows }: AtRiskInflowsProps) {

@@ -1,15 +1,11 @@
 import Link from 'next/link';
 import type { Bill } from '@/types/bill';
+import { formatINR } from '@/lib/format';
 
 type BillsListProps = {
   bills?: Bill[] | null;
 };
 
-const inr = new Intl.NumberFormat('en-IN', {
-  style: 'currency',
-  currency: 'INR',
-  maximumFractionDigits: 0,
-});
 
 const dateFmt = new Intl.DateTimeFormat('en-IN', {
   day: 'numeric',
@@ -68,7 +64,7 @@ export default function BillsList({ bills }: BillsListProps) {
                     {recurrenceLabel(String(bill.recurrence))}
                   </span>
                   <span className="font-semibold tabular-nums text-foreground">
-                    {inr.format(Number(bill.amount))}
+                    {formatINR(Number(bill.amount))}
                   </span>
                 </div>
               </Link>

@@ -1,6 +1,7 @@
 // Demo data shared by the CLI seed (prisma/seed.ts) and the settings reset.
 // Every function takes a Prisma client or transaction client so the reset can run atomically.
 import type { Prisma } from '@prisma/client';
+import { DEFAULT_CASH_BUFFER } from '@/lib/format';
 
 type Db = Prisma.TransactionClient;
 type Row = Record<string, unknown>;
@@ -117,7 +118,7 @@ function settingRow(): Row {
   return {
     openingCash: 6000,
     openingCashDate: startOfTodayUtc(),
-    cashBuffer: 5000,
+    cashBuffer: DEFAULT_CASH_BUFFER,
     upiId: 'priya.studio@upi',
     defaultDueDays: 5,
     reminderLanguage: 'english',
