@@ -16,6 +16,7 @@ import {
   Menu,
   X,
   Wallet,
+  LogOut,
 } from 'lucide-react';
 
 const PRODUCT_NAME = 'Kairos';
@@ -42,6 +43,18 @@ function isActive(pathname: string | null, href: string): boolean {
 export default function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  async function handleLogout() {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } finally {
+      window.location.href = '/login';
+    }
+  }
+
+  if (pathname === '/login') {
+    return <main className="min-h-screen w-full bg-background">{children}</main>;
+  }
 
   const brand = (
     <div className="ui-brand flex min-w-0 items-center gap-3 px-4 py-4">
@@ -124,7 +137,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         {nav}
 
         {/* Footer status in sidebar */}
-        <div className="hidden border-t border-border/60 p-3.5 sm:block">
+        <div className="border-t border-border/60 p-3.5 space-y-2">
           <div className="flex items-center gap-2 rounded-lg bg-muted/40 p-2">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
@@ -135,6 +148,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
               <p className="text-muted-foreground truncate">Auto-chase active</p>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border/80 bg-background py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition cursor-pointer shadow-xs"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            <span>Sign Out</span>
+          </button>
         </div>
       </aside>
 
