@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { previewInvoiceGeneration } from '@/modules/invoices/service';
-import { seedDemoData, clearDemoData } from '@/lib/demo-seed';
+import { describe, it, expect, vi } from 'vitest';
+import { previewInvoiceGeneration } from '@/modules/invoices';
+import { seedDemoData } from '@/lib/demo-seed';
 
 // Mock database and external repositories for unit testing
 vi.mock('@/lib/db', () => ({

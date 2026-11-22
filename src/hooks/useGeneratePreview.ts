@@ -54,10 +54,16 @@ export function useGeneratePreview(period?: string) {
         return null;
       }
 
-      const safeCustomers = customers;
+      const rawList: any[] = Array.isArray(preview?.customers)
+        ? preview.customers
+        : Array.isArray((preview as any)?.rows)
+        ? (preview as any).rows
+        : [];
       const ids =
         customerIds ??
-        safeCustomers.filter((c) => !c.already_invoiced).map((c) => c.customer_id);
+        rawList
+          .filter((c: any) => !(c.already_invoiced || c.alreadyInvoiced))
+          .map((c: any) => c.customer_id ?? c.customerId ?? c.id);
 
       if (ids.length === 0) {
         setError('Select at least one customer to invoice.');
