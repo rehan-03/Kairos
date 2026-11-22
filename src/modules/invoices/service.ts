@@ -205,9 +205,11 @@ async function refreshInvoiceStatus(invoiceId: string): Promise<void> {
 
 export async function listInvoices(filter: { status?: InvoiceStatus } = {}): Promise<Invoice[]> {
   const today = startOfToday();
-  const rows = await repo.findInvoices();
-  const payments = await repo.findPayments();
-  const customers = await listCustomers({ includeArchived: true }).catch(() => []);
+  const [rows, payments, customers] = await Promise.all([
+    repo.findInvoices(filter.status ? { status: filter.status } : {}),
+    repo.findPayments(),
+    listCustomers({ includeArchived: true }).catch(() => []),
+  ]);
   const customerMap = new Map(customers.map((c) => [c.id, c.name]));
 
   const paidByInvoice = new Map<string, number>();
@@ -411,17 +413,23 @@ export async function deletePayment(paymentId: string): Promise<void> {
 }
 
 export async function listOpenInvoicesForDashboard(_userId: string) {
-  const rows = await repo.findInvoices();
+  const [rows, { listCustomers }] = await Promise.all([
+    repo.findInvoices(),
+    import('@/modules/customers'),
+  ]);
   const invoiceIds = rows.map((r) => r.id);
-  const paidMap = invoiceIds.length > 0 ? await repo.sumPaymentsByInvoiceIds(invoiceIds) : new Map();
-  const { getCustomerById } = await import('@/modules/customers');
+  const [paidMap, customers] = await Promise.all([
+    invoiceIds.length > 0 ? repo.sumPaymentsByInvoiceIds(invoiceIds) : new Map<string, number>(),
+    listCustomers({ includeArchived: true }).catch(() => []),
+  ]);
+  const customerMap = new Map(customers.map((c) => [c.id, c]));
   const results = [];
   for (const row of rows) {
     const amount = Number(String(row.amount));
     const paid = Number(String(paidMap.get(row.id) ?? 0));
     const outstanding = amount - paid;
     if (outstanding <= 0 && row.status === 'paid') continue;
-    const customer = await getCustomerById(row.customerId).catch(() => null);
+    const customer = customerMap.get(row.customerId);
     results.push({
       id: row.id,
       customerId: row.customerId,
@@ -432,23 +440,27 @@ export async function listOpenInvoicesForDashboard(_userId: string) {
       paidAmount: paid,
       dueDate: row.dueDate.toISOString().slice(0, 10),
       lastReminderAt: row.lastReminderAt ? row.lastReminderAt.toISOString() : null,
-      expectedDelayDays: null,
+      expectedDelayDays: customer?.typicalDelayDays ?? null,
     });
   }
   return results;
 }
 
 export async function previewInvoiceGeneration(period: string) {
-  const { listCustomers } = await import('@/modules/customers');
-  const allCustomers = await listCustomers();
+  const [{ listCustomers }, { getWorkspaceSettings }] = await Promise.all([
+    import('@/modules/customers'),
+    import('@/modules/settings'),
+  ]);
+  const [allCustomers, settings] = await Promise.all([
+    listCustomers(),
+    getWorkspaceSettings(),
+  ]);
   // Treat customer as recurring when billingType is RECURRING (case-insensitive) and not archived
   const customers = allCustomers.filter(
     (c) => !c.archivedAt && String(c.billingType ?? '').trim().toUpperCase() === 'RECURRING',
   );
   const customerIds = customers.map((c) => c.id);
   const alreadyInvoiced = await repo.findInvoicedCustomerIdsForPeriod(period, customerIds);
-  const { getWorkspaceSettings } = await import('@/modules/settings');
-  const settings = await getWorkspaceSettings();
   const defaultDueDays = settings.defaultDueDays ?? 5;
   const today = new Date();
   const issueDate = today.toISOString().slice(0, 10);

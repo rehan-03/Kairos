@@ -75,6 +75,7 @@ model Customer {
   payments          Payment[]    @relation("CustomerPayments")
 
   @@index([archivedAt])
+  @@index([billingType])
   @@map("customers")
 }
 
@@ -102,6 +103,7 @@ model Invoice {
   @@index([customerId])
   @@index([status])
   @@index([dueDate])
+  @@index([billingPeriod])
   @@map("invoices")
 }
 
