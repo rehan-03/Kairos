@@ -47,6 +47,13 @@ function pick(list: string[], i: number): string | undefined {
  * Errors are not swallowed: inside a transaction a failed insert must abort the whole reset.
  */
 export async function seedDemoData(db: Db): Promise<void> {
+  // Recreated with the fixed id on every run so the demo session cookie still resolves after a reset.
+  await db.user.upsert({
+    where: { id: '00000000-0000-4000-8000-000000000001' },
+    update: {},
+    create: { id: '00000000-0000-4000-8000-000000000001', email: 'demo@example.com', name: 'Demo User' },
+  });
+
   if ((await db.bill.count()) === 0) {
     await insertAll(billRows(), (data) => db.bill.create({ data, select: { id: true } }));
   }

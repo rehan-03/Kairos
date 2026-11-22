@@ -6,8 +6,9 @@ import { seedDemoData } from '../src/lib/demo-seed';
 const db = new PrismaClient();
 
 async function main() {
-  console.log('[seed] demo-user: MISSING — this app has no user model');
-  await seedDemoData(db);
+  await seedDemoData(db); // upserts the demo user (demo@example.com) along with the rest of the demo data
+  const demoUser = await db.user.findFirst({ where: { email: 'demo@example.com' }, select: { email: true } });
+  console.log(demoUser ? '[seed] demo-user: OK' : '[seed] demo-user: MISSING');
   console.log('[seed] demo data ready');
 }
 

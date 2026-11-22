@@ -166,3 +166,11 @@ model Setting {
 
   @@map("settings")
 }
+
+model User {
+  id    String @id @db.Uuid
+  email String @unique
+  name  String
+
+  @@map("users")
+}
