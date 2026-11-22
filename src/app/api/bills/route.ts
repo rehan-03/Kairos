@@ -138,7 +138,7 @@ export async function GET(request: Request) {
       new URL(request.url).searchParams.get('includeArchived') === 'true';
 
     const bills = await listBills({ includeArchived });
-    return NextResponse.json({ bills });
+    return NextResponse.json({ data: bills, bills });
   } catch {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }

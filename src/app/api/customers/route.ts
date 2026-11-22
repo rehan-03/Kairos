@@ -19,7 +19,7 @@ export async function GET(request: Request) {
 
   try {
     const customers = await listCustomers({ includeArchived });
-    return NextResponse.json({ customers });
+    return NextResponse.json({ data: customers, customers });
   } catch (e) {
     console.error('GET /api/customers failed', e);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });

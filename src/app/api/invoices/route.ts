@@ -35,7 +35,7 @@ export async function GET(request: Request) {
 
   try {
     const invoices = await listInvoices({ status });
-    return NextResponse.json({ invoices });
+    return NextResponse.json({ data: invoices, invoices });
   } catch (e) {
     if (e instanceof InvoiceServiceError) {
       return NextResponse.json({ error: e.message }, { status: 400 });

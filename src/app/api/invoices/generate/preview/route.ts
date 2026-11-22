@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 
   try {
     const preview = await previewInvoiceGeneration(period);
-    return NextResponse.json(preview);
+    return NextResponse.json({ ...preview, data: preview.rows });
   } catch (e) {
     if (e instanceof InvoiceServiceError) {
       return NextResponse.json({ error: e.message }, { status: 400 });
