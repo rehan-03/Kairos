@@ -61,15 +61,15 @@ function asText(value: unknown): string {
 function toDto(row: CustomerRow): CustomerDto {
   return {
     id: row.id,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-    name: row.name,
-    contactName: row.contactName,
-    phone: row.phone,
-    billingType: row.billingType,
-    defaultAmount: Number(row.defaultAmount),
-    billingDay: row.billingDay,
-    typicalDelayDays: row.typicalDelayDays,
+    createdAt: row.createdAt ? row.createdAt.toISOString() : new Date().toISOString(),
+    updatedAt: row.updatedAt ? row.updatedAt.toISOString() : new Date().toISOString(),
+    name: row.name ?? 'Customer',
+    contactName: row.contactName ?? null,
+    phone: row.phone ?? '',
+    billingType: (String(row.billingType || 'recurring').toLowerCase() === 'one_off' ? 'one_off' : 'recurring') as BillingKind,
+    defaultAmount: Number(row.defaultAmount ?? 0),
+    billingDay: row.billingDay ?? null,
+    typicalDelayDays: row.typicalDelayDays ?? 3,
     archivedAt: row.archivedAt ? row.archivedAt.toISOString() : null,
   };
 }

@@ -32,7 +32,9 @@ export default function CustomerTable({
   customers,
   emptyMessage = 'No customers yet.',
 }: CustomerTableProps) {
-  const rows = Array.isArray(customers) ? customers : [];
+  const rows = (Array.isArray(customers) ? customers : []).filter(
+    (c): c is Customer => Boolean(c && typeof c === 'object' && c.name),
+  );
 
   if (rows.length === 0) {
     return (

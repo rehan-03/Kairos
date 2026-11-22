@@ -96,10 +96,15 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
     (async () => {
       setIsLoading(true);
       try {
-        const data = await getCustomerById(customerId);
+        const data: any = await getCustomerById(customerId);
         if (cancelled) return;
-        setCustomer(data.customer);
-        setForm(toFormState(data.customer));
+        const cust: Customer = data?.customer ?? data;
+        if (cust && typeof cust === 'object') {
+          setCustomer(cust);
+          setForm(toFormState(cust));
+        } else {
+          setPageError('Customer not found.');
+        }
       } catch (e) {
         if (!cancelled) setPageError(errorMessage(e));
       } finally {
@@ -164,6 +169,22 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
       <main className="space-y-4 p-4 sm:p-6">
         <p className="text-sm text-destructive">{pageError ?? 'Customer not found.'}</p>
         <Link href="/customers" className="text-sm underline">Back to customers</Link>
+      </main>
+    );
+  }
+
+  if (!customer || !form) {
+    return (
+      <main data-nexen-component="nx_app_customers__id__page" className="mx-auto w-full max-w-3xl min-w-0 space-y-6 p-4 sm:p-6">
+        <Link href="/customers" className="text-sm text-muted-foreground underline">
+          Back to customers
+        </Link>
+        <PageHeader title="Customer details" subtitle={isLoading ? 'Loading customer…' : 'Customer not found'} action={null} />
+        {pageError && (
+          <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
+            {pageError}
+          </div>
+        )}
       </main>
     );
   }
