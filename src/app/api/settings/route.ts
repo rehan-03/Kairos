@@ -102,6 +102,10 @@ function validatePatch(body: unknown): PatchValidation {
     patch.reminderLanguage = value as ReminderLanguageValue;
   }
 
+  if ('demoSafeWhatsApp' in input) {
+    patch.demoSafeWhatsApp = Boolean(input.demoSafeWhatsApp);
+  }
+
   if (Object.keys(patch).length === 0) {
     return { ok: false, message: MESSAGES.empty };
   }

@@ -168,6 +168,7 @@ model Setting {
   upiId           String           @map("upi_id")
   defaultDueDays  Int              @default(5) @map("default_due_days")
   reminderLanguage ReminderLanguage @default(english) @map("reminder_language")
+  demoSafeWhatsApp Boolean          @default(true) @map("demo_safe_whatsapp")
 
   @@map("settings")
 }

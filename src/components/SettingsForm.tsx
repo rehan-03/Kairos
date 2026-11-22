@@ -18,6 +18,7 @@ interface FormValues {
   upiId: string;
   defaultDueDays: string;
   reminderLanguage: Language;
+  demoSafeWhatsApp: boolean;
 }
 
 type FieldErrors = Partial<Record<keyof FormValues, string>>;
@@ -28,6 +29,7 @@ const DEFAULTS: FormValues = {
   upiId: '',
   defaultDueDays: '5',
   reminderLanguage: 'english',
+  demoSafeWhatsApp: true,
 };
 
 const NUMERIC_FIELDS: { key: 'openingCash' | 'cashBuffer' | 'defaultDueDays'; label: string; hint: string }[] = [
@@ -49,6 +51,7 @@ function toValues(s?: Partial<Setting> | null): FormValues {
     upiId: typeof s.upiId === 'string' ? s.upiId : DEFAULTS.upiId,
     defaultDueDays: wholeRupees(s.defaultDueDays, DEFAULTS.defaultDueDays),
     reminderLanguage: s.reminderLanguage === 'hinglish' ? 'hinglish' : 'english',
+    demoSafeWhatsApp: s.demoSafeWhatsApp !== undefined ? Boolean(s.demoSafeWhatsApp) : true,
   };
 }
 
@@ -90,7 +93,7 @@ export default function SettingsForm({ settings, onSaved }: SettingsFormProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings?.id]);
 
-  const update = (key: keyof FormValues, value: string) => {
+  const update = <K extends keyof FormValues>(key: K, value: FormValues[K]) => {
     setValues((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({ ...prev, [key]: undefined }));
     setSavedNotice(false);
@@ -112,6 +115,7 @@ export default function SettingsForm({ settings, onSaved }: SettingsFormProps) {
         upiId: values.upiId.trim(),
         defaultDueDays: Number(values.defaultDueDays.trim()),
         reminderLanguage: values.reminderLanguage,
+        demoSafeWhatsApp: values.demoSafeWhatsApp,
       });
       setValues(toValues(saved));
       setSavedNotice(true);
@@ -173,7 +177,7 @@ export default function SettingsForm({ settings, onSaved }: SettingsFormProps) {
           <select
             className={inputClass}
             value={values.reminderLanguage}
-            onChange={(e) => update('reminderLanguage', e.target.value)}
+            onChange={(e) => update('reminderLanguage', e.target.value as Language)}
             aria-invalid={Boolean(errors.reminderLanguage)}
           >
             <option value="english">English</option>
@@ -186,6 +190,25 @@ export default function SettingsForm({ settings, onSaved }: SettingsFormProps) {
             </span>
           )}
         </label>
+
+        <div className="sm:col-span-2 rounded-xl border border-border/80 bg-muted/20 p-4">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={values.demoSafeWhatsApp}
+              onChange={(e) => update('demoSafeWhatsApp', e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+            />
+            <div className="space-y-0.5">
+              <span className="text-sm font-medium text-foreground">
+                Open WhatsApp without a recipient (demo-safe)
+              </span>
+              <p className="text-xs text-muted-foreground">
+                When ON, always use the no-recipient link, so seeded synthetic numbers are never contacted. When OFF, use the customer&apos;s number.
+              </p>
+            </div>
+          </label>
+        </div>
       </div>
 
       {formError && (

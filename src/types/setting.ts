@@ -16,4 +16,5 @@ export interface Setting {
   upiId: string;
   defaultDueDays: number;
   reminderLanguage: ReminderLanguage;
+  demoSafeWhatsApp?: boolean;
 }

@@ -35,6 +35,7 @@ interface ValidatedSettingsFields {
   upiId?: string;
   defaultDueDays?: number;
   reminderLanguage?: ReminderLanguageInput;
+  demoSafeWhatsApp?: boolean;
 }
 
 function fail(message: string, field: string): never {
@@ -102,6 +103,9 @@ function validateSettingsFields(input: Record<string, unknown>): ValidatedSettin
   }
   if (input.reminderLanguage !== undefined) {
     result.reminderLanguage = parseReminderLanguage(input.reminderLanguage);
+  }
+  if (input.demoSafeWhatsApp !== undefined) {
+    result.demoSafeWhatsApp = Boolean(input.demoSafeWhatsApp);
   }
 
   return result;
