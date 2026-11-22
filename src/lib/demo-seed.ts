@@ -91,7 +91,7 @@ function billRows(): Row[] {
 }
 
 function customerRows(): Row[] {
-  const archivedAt = new Date('2026-10-31T17:00:00');
+  const archivedAt = null;
   return [
     { name: 'Ananya', contactName: 'Priya Deshmukh', phone: '9822015367', billingType: 'recurring', defaultAmount: 2000, billingDay: 12, typicalDelayDays: 5, archivedAt },
     { name: 'Rohan', contactName: 'Vikram Patil', phone: '9765402281', billingType: 'recurring', defaultAmount: 1500, billingDay: 5, typicalDelayDays: 3, archivedAt },
