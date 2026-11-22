@@ -170,11 +170,6 @@ function paymentRows(customerIds: string[], invoiceIds: string[]): Row[] {
     invoiceId: pick(invoiceIds, i), customerId: pick(customerIds, i), amount, method, paidOn: new Date(paidOn),
   });
   return [
-    p(0, 2000, 'upi', '2026-10-07T00:00:00'),
-    p(1, 2000, 'upi', '2026-10-21T00:00:00'),
-    p(2, 2500, 'upi', '2026-11-04T00:00:00'),
-    p(3, 3000, 'upi', '2026-11-19T00:00:00'),
-    p(4, 1500, 'upi', '2026-10-13T00:00:00'),
     p(5, 3000, 'cash', '2026-10-14T00:00:00'),
     p(6, 3000, 'upi', '2026-10-04T00:00:00'),
     p(7, 2000, 'upi', '2026-09-09T00:00:00'),
