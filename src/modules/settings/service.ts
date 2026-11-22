@@ -192,11 +192,11 @@ export async function updateWorkspaceSettings(input: Record<string, unknown>) {
  * customer, invoice, payment, reminder, bill and setting, then reseeds them.
  * Running it twice in a row leaves the same data each time.
  */
-export async function resetDemoSettings() {
+export async function resetDemoSettings(userId?: string) {
   const settings = await db.$transaction(
     async (tx) => {
       await clearDemoData(tx);
-      await seedDemoData(tx);
+      await seedDemoData(tx, userId);
       return tx.setting.findFirst();
     },
     { timeout: 30000 },

@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const settings = await resetDemoSettings();
+    const settings = await resetDemoSettings(userId);
     return NextResponse.json({ reset: true, settings });
   } catch (error) {
     console.error('[settings/reset-demo] POST failed', error);
