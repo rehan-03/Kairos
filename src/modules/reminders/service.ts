@@ -54,7 +54,7 @@ function toNumber(value: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-function outstandingOf(invoice: InvoiceFacts): number {
+export function outstandingOf(invoice: InvoiceFacts): number {
   return toNumber(invoice.outstandingAmount ?? invoice.amount);
 }
 
