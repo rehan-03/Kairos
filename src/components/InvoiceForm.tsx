@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
+import { Sparkles } from 'lucide-react';
 import { ApiError, createInvoice, getCustomers } from '@/lib/api';
 import type { Customer } from '@/types/customer';
 
@@ -101,6 +102,27 @@ export default function InvoiceForm() {
     }
   }
 
+  function handleDemoAutofill() {
+    setErrors({});
+    setSubmitError(null);
+    const chosenCustomer = customers.find((c) => !c.archivedAt) ?? customers[0];
+    if (chosenCustomer) {
+      setCustomerId(chosenCustomer.id);
+      if (chosenCustomer.defaultAmount && Number(chosenCustomer.defaultAmount) > 0) {
+        setAmount(String(Math.round(Number(chosenCustomer.defaultAmount))));
+      } else {
+        setAmount('2500');
+      }
+    } else {
+      setAmount('2500');
+    }
+    setDescription('Workshop fee & revision classes (Weekend Batch)');
+    const today = new Date();
+    const due = new Date(today);
+    due.setDate(due.getDate() + 5);
+    setDueDate(dmyOf(due));
+  }
+
   if (!isLoading && customers.length === 0) {
     return (
       <div className="rounded-[var(--radius)] border border-border bg-card p-6 shadow-sm">
@@ -119,6 +141,21 @@ export default function InvoiceForm() {
 
   return (
     <form data-nexen-component="nx_components_InvoiceForm" onSubmit={handleSubmit} noValidate className="w-full max-w-xl space-y-5 rounded-[var(--radius)] border border-border bg-card p-6 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">Invoice details</h2>
+          <p className="text-xs text-muted-foreground">Fill in details manually or autofill with demo data</p>
+        </div>
+        <button
+          type="button"
+          onClick={handleDemoAutofill}
+          disabled={isLoading || customers.length === 0}
+          className="inline-flex items-center gap-1.5 rounded-[var(--radius)] border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors disabled:opacity-50"
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          <span>Demo autofill</span>
+        </button>
+      </div>
       <label className="flex flex-col gap-1.5">
         <span className="text-sm font-medium text-foreground">Customer</span>
         <select
@@ -184,17 +221,28 @@ export default function InvoiceForm() {
 
       {submitError && <p className={errorClass}>{submitError}</p>}
 
-      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <button
+            type="submit"
+            disabled={isSubmitting || isLoading}
+            className="h-10 rounded-[var(--radius)] bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+          >
+            {isSubmitting ? 'Saving...' : 'Save invoice'}
+          </button>
+          <Link href="/invoices" className="inline-flex h-10 items-center justify-center px-4 text-sm font-semibold text-foreground">
+            Cancel
+          </Link>
+        </div>
         <button
-          type="submit"
-          disabled={isSubmitting || isLoading}
-          className="h-10 rounded-[var(--radius)] bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+          type="button"
+          onClick={handleDemoAutofill}
+          disabled={isLoading || customers.length === 0}
+          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-[var(--radius)] border border-border bg-card px-3 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
         >
-          {isSubmitting ? 'Saving...' : 'Save invoice'}
+          <Sparkles className="h-3.5 w-3.5" />
+          <span>Autofill demo</span>
         </button>
-        <Link href="/invoices" className="inline-flex h-10 items-center justify-center px-4 text-sm font-semibold text-foreground">
-          Cancel
-        </Link>
       </div>
     </form>
   );
