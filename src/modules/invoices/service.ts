@@ -257,8 +257,15 @@ export async function createInvoice(input: Record<string, unknown>): Promise<Inv
     throw new InvoiceServiceError('Please choose a customer for this invoice.', 400);
   }
 
-  const description = parseDescription(input.description);
-  const amount = parseWholeAmount(input.amount);
+  const rawBillingType = typeof input.billingType === 'string' ? input.billingType.trim().toLowerCase() : '';
+  const billingType = rawBillingType === 'recurring' ? 'recurring' : 'one_off';
+  const billingPeriod = typeof input.billingPeriod === 'string' ? input.billingPeriod.trim() : null;
+  const description =
+    input.description !== undefined
+      ? parseDescription(input.description)
+      : `Tuition fee, ${billingPeriod ?? ''}`.trim();
+  const rawAmount = input.amount !== undefined ? input.amount : customer.defaultAmount;
+  const amount = parseWholeAmount(rawAmount);
   const today = startOfToday();
   const issueDate = today;
   const dueDate =
@@ -271,7 +278,8 @@ export async function createInvoice(input: Record<string, unknown>): Promise<Inv
 
   const row = await repo.insertInvoice({
     customerId,
-    billingType: 'one_off',
+    billingType,
+    billingPeriod,
     description,
     amount,
     outstandingAmount: amount,
@@ -432,7 +440,11 @@ export async function listOpenInvoicesForDashboard(_userId: string) {
 
 export async function previewInvoiceGeneration(period: string) {
   const { listCustomers } = await import('@/modules/customers');
-  const customers = await listCustomers();
+  const allCustomers = await listCustomers();
+  // Treat customer as recurring when billingType is RECURRING (case-insensitive) and not archived
+  const customers = allCustomers.filter(
+    (c) => !c.archivedAt && String(c.billingType ?? '').trim().toUpperCase() === 'RECURRING',
+  );
   const customerIds = customers.map((c) => c.id);
   const alreadyInvoiced = await repo.findInvoicedCustomerIdsForPeriod(period, customerIds);
   const { getWorkspaceSettings } = await import('@/modules/settings');
@@ -442,15 +454,34 @@ export async function previewInvoiceGeneration(period: string) {
   const issueDate = today.toISOString().slice(0, 10);
   const dueDate = new Date(today.getTime() + defaultDueDays * 86400000).toISOString().slice(0, 10);
 
-  const rows = customers.map((c) => ({
-    customerId: c.id,
-    customerName: c.name,
-    amount: Number(String(c.defaultAmount ?? 0)),
-    issueDate,
-    dueDate,
-    alreadyInvoiced: alreadyInvoiced.has(c.id),
-  }));
-  return { period, rows };
+  const previewRows = customers.map((c) => {
+    const isAlreadyInvoiced = alreadyInvoiced.has(c.id);
+    const amount = Number(String(c.defaultAmount ?? 0));
+    return {
+      id: c.id,
+      customerId: c.id,
+      customer_id: c.id,
+      name: c.name,
+      customerName: c.name,
+      contactName: c.contactName,
+      billingType: 'recurring',
+      billingDay: c.billingDay,
+      defaultAmount: amount,
+      amount,
+      issueDate,
+      issue_date: issueDate,
+      dueDate,
+      due_date: dueDate,
+      alreadyInvoiced: isAlreadyInvoiced,
+      already_invoiced: isAlreadyInvoiced,
+    };
+  });
+
+  return {
+    period,
+    customers: previewRows,
+    rows: previewRows,
+  };
 }
 
 export async function markInvoiceReminded(invoiceId: string, sentAt: Date): Promise<void> {

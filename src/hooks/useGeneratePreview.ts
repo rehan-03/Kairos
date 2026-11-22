@@ -54,7 +54,7 @@ export function useGeneratePreview(period?: string) {
         return null;
       }
 
-      const safeCustomers = Array.isArray(preview.customers) ? preview.customers : [];
+      const safeCustomers = customers;
       const ids =
         customerIds ??
         safeCustomers.filter((c) => !c.already_invoiced).map((c) => c.customer_id);
@@ -83,9 +83,24 @@ export function useGeneratePreview(period?: string) {
     [preview, load],
   );
 
-  const customers: GenerateCustomerRow[] = Array.isArray(preview?.customers)
+  const rawList: any[] = Array.isArray(preview?.customers)
     ? preview.customers
+    : Array.isArray((preview as any)?.rows)
+    ? (preview as any).rows
     : [];
+
+  const customers: GenerateCustomerRow[] = rawList.map((r: any) => ({
+    customer_id: r.customer_id ?? r.customerId ?? r.id,
+    name: r.name ?? r.customerName ?? 'Customer',
+    amount: Number(r.amount ?? r.defaultAmount ?? 0),
+    issue_date: r.issue_date ?? r.issueDate ?? '',
+    due_date: r.due_date ?? r.dueDate ?? '',
+    already_invoiced: Boolean(r.already_invoiced ?? r.alreadyInvoiced),
+    alreadyInvoiced: Boolean(r.alreadyInvoiced ?? r.already_invoiced),
+    defaultAmount: Number(r.defaultAmount ?? r.amount ?? 0),
+    contactName: r.contactName,
+    billingDay: r.billingDay,
+  } as GenerateCustomerRow));
 
   return {
     preview,
