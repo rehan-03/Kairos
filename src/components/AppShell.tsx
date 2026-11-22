@@ -114,16 +114,28 @@ export default function AppShell({ children }: { children: ReactNode }) {
       {/* Mobile Topbar */}
       <header className="ui-topbar sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-border bg-card/95 px-4 py-2 backdrop-blur-md sm:hidden">
         <div className="min-w-0 flex-1">{brand}</div>
-        <button
-          type="button"
-          onClick={() => setMenuOpen((open) => !open)}
-          aria-expanded={menuOpen}
-          aria-controls="app-menu"
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-foreground shadow-xs hover:bg-muted"
-        >
-          {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-          <span className="sr-only">{menuOpen ? 'Close menu' : 'Open menu'}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleLogout}
+            title="Log out"
+            aria-label="Log out"
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-xs font-medium text-muted-foreground hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 transition"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Log out</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-expanded={menuOpen}
+            aria-controls="app-menu"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-foreground shadow-xs hover:bg-muted"
+          >
+            {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            <span className="sr-only">{menuOpen ? 'Close menu' : 'Open menu'}</span>
+          </button>
+        </div>
       </header>
 
       {/* Sidebar for Desktop & Mobile Overlay */}
@@ -151,10 +163,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={handleLogout}
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border/80 bg-background py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition cursor-pointer shadow-xs"
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-border/80 bg-background py-2 text-xs font-semibold text-muted-foreground hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 dark:hover:bg-rose-950/30 dark:hover:text-rose-400 dark:hover:border-rose-900 transition cursor-pointer shadow-xs"
           >
-            <LogOut className="h-3.5 w-3.5" />
-            <span>Sign Out</span>
+            <LogOut className="h-4 w-4" />
+            <span>Log Out</span>
           </button>
         </div>
       </aside>
