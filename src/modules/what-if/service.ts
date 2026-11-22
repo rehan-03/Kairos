@@ -165,16 +165,12 @@ function buildModel(state: LoadedState): Model {
   const activeIds = new Set<string>();
   const nameByCustomer = new Map<string, string>();
   const delayByCustomer = new Map<string, number>();
-  const latestPaid: { id: string; day: number }[] = [];
+  const paidDelaysByCustomer = new Map<string, number[]>();
+  const overdueDaysByCustomer = new Map<string, number>();
 
   for (const customer of state.customers) {
     activeIds.add(customer.id);
     nameByCustomer.set(customer.id, customer.name);
-
-    const paidDays = customer.payments.map((p) => toDayNumber(p.paidOn));
-    if (paidDays.length > 0) {
-      latestPaid.push({ id: customer.id, day: Math.max(...paidDays) });
-    }
 
     const lastPaidInvoices = state.invoices
       .filter((inv) => inv.customerId === customer.id && inv.status === 'paid')
@@ -200,6 +196,14 @@ function buildModel(state: LoadedState): Model {
   const receipts: OpenReceipt[] = [];
   for (const inv of state.invoices) {
     if (inv.status === 'paid') {
+      const paidDays = inv.payments.map((p) => toDayNumber(p.paidOn));
+      if (paidDays.length > 0) {
+        const lateBy = Math.max(...paidDays) - toDayNumber(inv.dueDate);
+        paidDelaysByCustomer.set(inv.customerId, [
+          ...(paidDelaysByCustomer.get(inv.customerId) ?? []),
+          lateBy,
+        ]);
+      }
       continue;
     }
     const customerName = nameByCustomer.get(inv.customerId);
@@ -213,6 +217,13 @@ function buildModel(state: LoadedState): Model {
         : inv.amount.toNumber() - paid;
     if (remaining <= 0) {
       continue;
+    }
+    const overdueBy = today - toDayNumber(inv.dueDate);
+    if (overdueBy > 0) {
+      overdueDaysByCustomer.set(
+        inv.customerId,
+        Math.max(overdueBy, overdueDaysByCustomer.get(inv.customerId) ?? 0),
+      );
     }
     const delay = delayByCustomer.get(inv.customerId) ?? DEFAULT_DELAY_DAYS;
     const isThisMonth =
@@ -234,10 +245,21 @@ function buildModel(state: LoadedState): Model {
     .map((b) => ({ day: toDayNumber(b.dueDate), amount: b.amount.toNumber() }))
     .filter((b) => b.day >= today);
 
-  const latestPayerIds = latestPaid
-    .sort((a, b) => b.day - a.day)
-    .slice(0, PRESET_PAYER_COUNT)
-    .map((p) => p.id);
+  // Preset payers: highest average days-late on paid invoices first, then the most overdue customers.
+  const averageLateBy = (customerId: string): number => {
+    const days = paidDelaysByCustomer.get(customerId) ?? [];
+    return days.reduce((sum, d) => sum + d, 0) / days.length;
+  };
+  const byTypicalDelay = Array.from(paidDelaysByCustomer.keys()).sort(
+    (a, b) => averageLateBy(b) - averageLateBy(a),
+  );
+  const byOverdue = Array.from(overdueDaysByCustomer.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([id]) => id);
+  const latestPayerIds = Array.from(new Set([...byTypicalDelay, ...byOverdue])).slice(
+    0,
+    PRESET_PAYER_COUNT,
+  );
 
   return {
     today,

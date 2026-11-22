@@ -169,7 +169,62 @@ function invoiceRows(customerIds: string[]): Row[] {
       issueDate: new Date('2026-10-12T00:00:00'), dueDate: new Date('2026-10-17T00:00:00'),
       sentAt: new Date('2026-10-12T18:35:00'), lastReminderAt: new Date('2026-11-13T19:10:00'), expectedReceiptDate: new Date('2026-11-24T00:00:00'),
     },
+    ...pastPaidInvoiceRows(customerIds),
   ];
+}
+
+/**
+ * Past paid invoices, 2-3 per customer. Customers 0-4 are the late payers (paid 6-12 days after
+ * due); customers 5-7 are regular payers (paid 0-4 days after due). Dates are relative to today.
+ */
+const PAST_PAID: { customer: number; amount: number; dueAgo: number; delay: number; method: string }[] = [
+  { customer: 0, amount: 2000, dueAgo: 105, delay: 9, method: 'upi' },
+  { customer: 0, amount: 2000, dueAgo: 75, delay: 11, method: 'upi' },
+  { customer: 0, amount: 2000, dueAgo: 45, delay: 7, method: 'upi' },
+  { customer: 1, amount: 1500, dueAgo: 105, delay: 6, method: 'cash' },
+  { customer: 1, amount: 1500, dueAgo: 75, delay: 12, method: 'upi' },
+  { customer: 1, amount: 1500, dueAgo: 45, delay: 8, method: 'upi' },
+  { customer: 2, amount: 2000, dueAgo: 105, delay: 10, method: 'upi' },
+  { customer: 2, amount: 2000, dueAgo: 75, delay: 6, method: 'upi' },
+  { customer: 2, amount: 2000, dueAgo: 45, delay: 11, method: 'cash' },
+  { customer: 3, amount: 3000, dueAgo: 105, delay: 7, method: 'upi' },
+  { customer: 3, amount: 3000, dueAgo: 75, delay: 12, method: 'upi' },
+  { customer: 3, amount: 3000, dueAgo: 45, delay: 9, method: 'upi' },
+  { customer: 4, amount: 3000, dueAgo: 105, delay: 8, method: 'upi' },
+  { customer: 4, amount: 3000, dueAgo: 75, delay: 10, method: 'cash' },
+  { customer: 4, amount: 3000, dueAgo: 45, delay: 6, method: 'upi' },
+  { customer: 5, amount: 1500, dueAgo: 75, delay: 2, method: 'upi' },
+  { customer: 5, amount: 1500, dueAgo: 45, delay: 0, method: 'upi' },
+  { customer: 6, amount: 4000, dueAgo: 75, delay: 3, method: 'cash' },
+  { customer: 6, amount: 4000, dueAgo: 45, delay: 4, method: 'upi' },
+  { customer: 7, amount: 2500, dueAgo: 75, delay: 1, method: 'upi' },
+  { customer: 7, amount: 2500, dueAgo: 45, delay: 4, method: 'cash' },
+];
+
+function pastPaidOn(s: { dueAgo: number; delay: number }): Date {
+  return new Date(daysAgo(s.dueAgo).getTime() + s.delay * DAY_MS);
+}
+
+function pastPaidInvoiceRows(customerIds: string[]): Row[] {
+  return PAST_PAID.map((s) => {
+    const dueDate = daysAgo(s.dueAgo);
+    const period = dueDate.toISOString().slice(0, 7);
+    const billingType = s.customer >= 6 ? 'one_off' : 'recurring';
+    return {
+      customerId: pick(customerIds, s.customer),
+      billingType,
+      billingPeriod: period,
+      description: `${billingType === 'one_off' ? 'Workshop fee' : 'Tuition fee'}, ${period}`,
+      amount: s.amount,
+      outstandingAmount: 0,
+      status: 'paid',
+      issueDate: daysAgo(s.dueAgo + 5),
+      dueDate,
+      sentAt: daysAgo(s.dueAgo + 5),
+      lastReminderAt: dueDate,
+      expectedReceiptDate: pastPaidOn(s),
+    };
+  });
 }
 
 function paymentRows(customerIds: string[], invoiceIds: string[]): Row[] {
@@ -180,6 +235,14 @@ function paymentRows(customerIds: string[], invoiceIds: string[]): Row[] {
     p(5, 3000, 'cash', '2026-10-14T00:00:00'),
     p(6, 3000, 'upi', '2026-10-04T00:00:00'),
     p(7, 2000, 'upi', '2026-09-09T00:00:00'),
+    // Past paid invoices start at index 8 in invoiceRows (after the 8 fixed rows).
+    ...PAST_PAID.map((s, j): Row => ({
+      invoiceId: pick(invoiceIds, 8 + j),
+      customerId: pick(customerIds, s.customer),
+      amount: s.amount,
+      method: s.method,
+      paidOn: pastPaidOn(s),
+    })),
   ];
 }
 
