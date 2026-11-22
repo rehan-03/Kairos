@@ -37,6 +37,7 @@ next-env.d.ts
 
 # Nexen — secrets and diagnostics
 .env
+.env.local
 .env.*.local
 .codebenders/
 *.db
