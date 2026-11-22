@@ -102,12 +102,12 @@ function billRows(): Row[] {
 function customerRows(): Row[] {
   const archivedAt = null;
   return [
-    { name: 'Ananya', contactName: 'Priya Deshmukh', phone: '9822015367', billingType: 'recurring', defaultAmount: 2000, billingDay: 12, typicalDelayDays: 5, archivedAt },
-    { name: 'Rohan', contactName: 'Vikram Patil', phone: '9765402281', billingType: 'recurring', defaultAmount: 1500, billingDay: 5, typicalDelayDays: 3, archivedAt },
-    { name: 'Kabir', contactName: 'Nisha Joshi', phone: '9890134576', billingType: 'recurring', defaultAmount: 2000, billingDay: 2, typicalDelayDays: 4, archivedAt },
+    { name: 'Ananya', contactName: 'Priya Deshmukh', phone: '9822015367', billingType: 'recurring', defaultAmount: 3000, billingDay: 12, typicalDelayDays: 5, archivedAt },
+    { name: 'Rohan', contactName: 'Vikram Patil', phone: '9765402281', billingType: 'recurring', defaultAmount: 2500, billingDay: 5, typicalDelayDays: 3, archivedAt },
+    { name: 'Kabir', contactName: 'Nisha Joshi', phone: '9890134576', billingType: 'recurring', defaultAmount: 3000, billingDay: 2, typicalDelayDays: 4, archivedAt },
     { name: 'Diya', contactName: 'Anita Kulkarni', phone: '9561230874', billingType: 'recurring', defaultAmount: 3000, billingDay: 9, typicalDelayDays: 4, archivedAt },
     { name: 'Sia', contactName: 'Anita Kulkarni', phone: '9890551204', billingType: 'recurring', defaultAmount: 3000, billingDay: 26, typicalDelayDays: 6, archivedAt },
-    { name: 'Vihaan', contactName: 'Sunil Gokhale', phone: '9423067815', billingType: 'recurring', defaultAmount: 1500, billingDay: 15, typicalDelayDays: 2, archivedAt },
+    { name: 'Vihaan', contactName: 'Sunil Gokhale', phone: '9423067815', billingType: 'recurring', defaultAmount: 2500, billingDay: 15, typicalDelayDays: 2, archivedAt },
     { name: 'Tanvi', contactName: 'Sneha Pawar, Greenwood School', phone: '9850677412', billingType: 'one_off', defaultAmount: 4000, billingDay: 12, typicalDelayDays: 10, archivedAt },
     { name: 'Kiran', contactName: 'Kiran Bhatt, Bhatt Interiors', phone: '9820456713', billingType: 'one_off', defaultAmount: 2500, billingDay: 12, typicalDelayDays: 7, archivedAt },
   ];
