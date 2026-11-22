@@ -43,4 +43,17 @@ describe('buildWhatsAppLink', () => {
     expect(buildWhatsAppLink('Reminder', null)).toBe('https://wa.me/?text=Reminder');
     expect(buildWhatsAppLink('Reminder', undefined)).toBe('https://wa.me/?text=Reminder');
   });
+
+  it('preserves exact amount and due date formatted in WhatsApp URL', () => {
+    const text = 'Hi, tuition fee of ₹4,500 was due on 12 Nov 2026. Please pay to tutor@upi.';
+    const demoSafeUrl = buildWhatsAppLink(text, null);
+    expect(demoSafeUrl).toBe(`https://wa.me/?text=${encodeURIComponent(text)}`);
+    expect(decodeURIComponent(demoSafeUrl)).toContain('₹4,500');
+    expect(decodeURIComponent(demoSafeUrl)).toContain('12 Nov 2026');
+
+    const customerUrl = buildWhatsAppLink(text, '+91 98220 15367');
+    expect(customerUrl).toBe(`https://wa.me/919822015367?text=${encodeURIComponent(text)}`);
+    expect(decodeURIComponent(customerUrl)).toContain('₹4,500');
+    expect(decodeURIComponent(customerUrl)).toContain('12 Nov 2026');
+  });
 });
