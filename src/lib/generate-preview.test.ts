@@ -169,4 +169,68 @@ describe('demo-seed structure & reset demo', () => {
       }),
     );
   });
+
+  it('guarantees generate preview returns 15 customers after seed and shows exactly 3 un-invoiced invoices with overdue unchanged at ₹11,500', async () => {
+    const createdCustomers: any[] = [];
+    const createdInvoices: any[] = [];
+
+    const mockTx: any = {
+      user: { upsert: vi.fn().mockResolvedValue({}) },
+      bill: { count: vi.fn().mockResolvedValue(0), create: vi.fn().mockImplementation(() => ({ id: 'b1' })) },
+      customer: {
+        count: vi.fn().mockResolvedValue(0),
+        create: vi.fn().mockImplementation(({ data }: any) => {
+          const id = `cust-${createdCustomers.length}`;
+          createdCustomers.push({ id, ...data });
+          return { id };
+        }),
+      },
+      setting: { count: vi.fn().mockResolvedValue(0), create: vi.fn().mockResolvedValue({ id: 's1' }) },
+      invoice: {
+        count: vi.fn().mockResolvedValue(0),
+        create: vi.fn().mockImplementation(({ data }: any) => {
+          const id = `inv-${createdInvoices.length}`;
+          createdInvoices.push({ id, ...data });
+          return { id };
+        }),
+      },
+      payment: { count: vi.fn().mockResolvedValue(0), create: vi.fn().mockResolvedValue({ id: 'p1' }) },
+      reminder: { count: vi.fn().mockResolvedValue(0), create: vi.fn().mockResolvedValue({ id: 'r1' }) },
+    };
+
+    await seedDemoData(mockTx, 'demo-user-123');
+
+    const now = new Date();
+    const currPeriod = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+
+    const { db } = await import('@/lib/db');
+    (db.customer.findMany as any).mockResolvedValue(
+      createdCustomers.map((c) => ({ ...c, createdAt: now, updatedAt: now })),
+    );
+
+    const seededPeriodInvoices = createdInvoices
+      .filter((inv) => inv.billingPeriod === currPeriod)
+      .map((inv) => ({ customerId: inv.customerId }));
+
+    (db.invoice.findMany as any).mockResolvedValue(seededPeriodInvoices);
+
+    const preview = await previewInvoiceGeneration(currPeriod);
+
+    // 1. Generate preview returns 15 recurring customers after seed
+    expect(preview.customers).toHaveLength(15);
+    expect(preview.rows).toHaveLength(15);
+
+    // 2. Exactly 3 customers un-invoiced this month (preview shows 3 invoices to generate)
+    const pendingInvoices = preview.rows.filter((r) => !r.already_invoiced);
+    expect(pendingInvoices).toHaveLength(3);
+
+    // Exactly 12 customers already invoiced
+    const alreadyInvoiced = preview.rows.filter((r) => r.already_invoiced);
+    expect(alreadyInvoiced).toHaveLength(12);
+
+    // 3. Overdue figure remains strictly ₹11,500
+    const overdueInvoices = createdInvoices.filter((inv) => inv.status === 'overdue');
+    const totalOverdue = overdueInvoices.reduce((sum, inv) => sum + inv.amount, 0);
+    expect(totalOverdue).toBe(11500);
+  });
 });
