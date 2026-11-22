@@ -1,10 +1,11 @@
 'use client';
 
-import { use, useEffect, useRef, useState } from 'react';
+import { use, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import BillForm from '@/components/BillForm';
 import ArchiveSection from '@/components/ArchiveSection';
+import ErrorCard from '@/components/ErrorCard';
 import { ApiError, createBillArchive, getBillById, updateBill } from '@/lib/api';
 import { formatINR } from '@/lib/format';
 import type { Bill } from '@/types/bill';
@@ -55,29 +56,37 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
   const [bill, setBill] = useState<Bill | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [loadErrorStatus, setLoadErrorStatus] = useState<number | null>(null);
+  const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [archiveError, setArchiveError] = useState<string | null>(null);
   const lastValues = useRef<FormValues | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  const fetchBill = useCallback(async () => {
     setIsLoading(true);
     setLoadFailed(false);
-    getBillById(id)
-      .then((b) => {
-        if (!cancelled) setBill(b);
-      })
-      .catch(() => {
-        if (!cancelled) setLoadFailed(true);
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+    setLoadErrorStatus(null);
+    setLoadErrorMessage(null);
+    try {
+      const b = await getBillById(id);
+      setBill(b);
+    } catch (e) {
+      setLoadFailed(true);
+      if (e instanceof ApiError) {
+        setLoadErrorStatus(e.status);
+        setLoadErrorMessage(e.message);
+      } else {
+        setLoadErrorMessage(e instanceof Error ? e.message : 'Could not load bill.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   }, [id]);
+
+  useEffect(() => {
+    void fetchBill();
+  }, [fetchBill]);
 
   async function save(values: FormValues) {
     lastValues.current = values;
@@ -131,16 +140,16 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
       <div className="ui-page">
         <div className="ui-page-header">
           <div className="min-w-0">
-            <h1>Bill not found</h1>
-            <p className="ui-meta">This bill may have been removed or belongs to another account.</p>
+            <Link className="ui-link" href="/bills">&larr; Back to bills</Link>
+            <h1>Bill Details</h1>
           </div>
         </div>
         <section className="ui-section">
-          <div className="ui-empty">
-            <p className="ui-empty-title">Bill not found</p>
-            <p className="ui-empty-text">Go back to your bills to pick another one.</p>
-            <Link className="ui-btn ui-btn-primary" href="/bills">Back to bills</Link>
-          </div>
+          <ErrorCard
+            status={loadErrorStatus}
+            message={loadErrorMessage || 'This bill could not be found or loaded.'}
+            onRetry={() => void fetchBill()}
+          />
         </section>
       </div>
     );

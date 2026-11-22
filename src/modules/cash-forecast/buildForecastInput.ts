@@ -111,10 +111,20 @@ export async function buildForecastInput(horizonDays: number): Promise<ForecastI
   const today = todayKey();
   const end = addDays(today, horizonDays - 1);
 
-  const settings = await db.setting.findFirst();
-  const openingCash = settings ? settings.openingCash.toNumber() : 0;
+  let settings: any = null;
+  try {
+    settings = await db.setting.findFirst();
+  } catch {
+    try {
+      const { getWorkspaceSettings } = await import('@/modules/settings');
+      settings = await getWorkspaceSettings();
+    } catch {
+      settings = null;
+    }
+  }
+  const openingCash = settings ? Number(settings.openingCash) : 0;
   const openingKey = settings ? dateOnlyKey(settings.openingCashDate) : today;
-  const cashBuffer = settings ? settings.cashBuffer.toNumber() : DEFAULT_CASH_BUFFER;
+  const cashBuffer = settings ? Number(settings.cashBuffer) : DEFAULT_CASH_BUFFER;
   const defaultDueDays = settings ? settings.defaultDueDays : 5;
 
   const [payments, bills, invoices, recurringCustomers, activeCustomers] = await Promise.all([

@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import PageHeader from '@/components/PageHeader';
 import FactsStrip from '@/components/FactsStrip';
 import ToneSelector from '@/components/ToneSelector';
 import ReminderDraftEditor from '@/components/ReminderDraftEditor';
+import ErrorCard from '@/components/ErrorCard';
 import {
+  ApiError,
   createInvoiceReminder,
   createReminderSend,
   getCustomers,
@@ -74,48 +76,56 @@ export default function ReminderDraftPage({
   const [isDrafting, setIsDrafting] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [copyFailed, setCopyFailed] = useState(false);
   const fallbackTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const invoice = invoices?.find((i) => i.id === invoiceId) ?? null;
+  const invoice = invoices?.find((i) => i && i.id === invoiceId) ?? null;
   const isSent = reminder?.status === 'sent';
 
-  async function load() {
+  const load = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
+    setErrorStatus(null);
     try {
-      const [rows, settings, customers] = await Promise.all([
+      const [rawRows, rawSettings, rawCustomers] = await Promise.all([
         getInvoices(),
         getSettings(),
         getCustomers(),
       ]);
+      const rows = Array.isArray(rawRows) ? rawRows : [];
+      const settings = Array.isArray(rawSettings) ? rawSettings : rawSettings ? [rawSettings] : [];
+      const customers = Array.isArray(rawCustomers) ? rawCustomers : [];
+
       setInvoices(
         rows
-          .filter((r) => OPEN_STATUSES.includes(r.status) && r.remaining_balance > 0)
+          .filter((r) => r && OPEN_STATUSES.includes(r.status) && Number(r.remaining_balance ?? 0) > 0)
           .map((r) => ({
             id: r.id,
-            customer_name: r.customer_name,
-            remaining_balance: r.remaining_balance,
-            due_date: r.due_date,
+            customer_name: r.customer_name ?? 'Customer',
+            remaining_balance: Number(r.remaining_balance ?? 0),
+            due_date: r.due_date ?? '',
             status: r.status,
           })),
       );
       const activeSetting = settings[0];
       setUpiId(activeSetting?.upiId ?? '');
       setDemoSafeWhatsApp(activeSetting?.demoSafeWhatsApp ?? true);
-      setCustomerPhone(customers);
+      const name = rows.find((r) => r && r.id === invoiceId)?.customer_name;
+      const match = customers.find((c) => c && c.name === name);
+      setPhone(match?.phone ?? '');
     } catch (e) {
-      setError(errorMessage(e));
+      if (e instanceof ApiError) {
+        setErrorStatus(e.status);
+        setError(e.message);
+      } else {
+        setError(errorMessage(e));
+      }
     } finally {
       setIsLoading(false);
     }
-  }
-
-  function setCustomerPhone(customers: { name: string; phone: string }[]) {
-    const name = invoices?.find((i) => i.id === invoiceId)?.customer_name;
-    const match = customers.find((c) => c.name === name);
-    setPhone(match?.phone ?? '');
-  }
+  }, [invoiceId]);
 
   useEffect(() => {
     void load();
@@ -253,9 +263,11 @@ export default function ReminderDraftPage({
       />
 
       {error && (
-        <p role="alert" className="rounded-[var(--radius)] border border-destructive/40 bg-card px-3 py-2 text-sm text-destructive">
-          {error}
-        </p>
+        <ErrorCard
+          status={errorStatus}
+          message={error}
+          onRetry={() => void load()}
+        />
       )}
       {notice && (
         <p className="rounded-[var(--radius)] border border-border bg-card px-3 py-2 text-sm text-success">{notice}</p>

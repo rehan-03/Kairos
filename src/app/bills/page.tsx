@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import BillsList from '@/components/BillsList';
 import PageHeader from '@/components/PageHeader';
-import { getBills } from '@/lib/api';
+import ErrorCard from '@/components/ErrorCard';
+import { ApiError, getBills } from '@/lib/api';
 import type { Bill } from '@/types/bill';
 import { Plus, RefreshCw, Loader2 } from 'lucide-react';
 
@@ -13,15 +14,22 @@ export default function BillsPage() {
   const [bills, setBills] = useState<Bill[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
 
   const load = useCallback(async (archived: boolean) => {
     setIsLoading(true);
     setError(null);
+    setErrorStatus(null);
     try {
       const rows = await getBills({ includeArchived: archived });
       setBills(Array.isArray(rows) ? rows : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load bills.');
+      if (e instanceof ApiError) {
+        setErrorStatus(e.status);
+        setError(e.message);
+      } else {
+        setError(e instanceof Error ? e.message : 'Could not load bills.');
+      }
       setBills([]);
     } finally {
       setIsLoading(false);
@@ -74,9 +82,11 @@ export default function BillsPage() {
         </div>
 
         {error ? (
-          <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
-            {error}
-          </div>
+          <ErrorCard
+            status={errorStatus}
+            message={error}
+            onRetry={() => void load(includeArchived)}
+          />
         ) : null}
 
         {isLoading && bills === null ? (

@@ -4,6 +4,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import GenerateReviewList from '@/components/GenerateReviewList';
+import ErrorCard from '@/components/ErrorCard';
 import { useGeneratePreview } from '@/hooks/useGeneratePreview';
 import { formatINR } from '@/lib/format';
 
@@ -25,7 +26,7 @@ function formatRupees(value: number): string {
 
 export default function GenerateInvoicesPage() {
   const router = useRouter();
-  const { customers, isLoading, isConfirming, error, confirmGenerate } = useGeneratePreview();
+  const { customers, isLoading, isConfirming, error, errorStatus, refetch, confirmGenerate } = useGeneratePreview();
 
   const rows: ReviewRowFields[] = Array.isArray(customers) ? (customers as ReviewRowFields[]) : [];
   const pending = rows.filter((r) => !(r.already_invoiced === true || r.alreadyInvoiced === true));
@@ -59,9 +60,12 @@ export default function GenerateInvoicesPage() {
       </div>
 
       {errorMessage && (
-        <p role="alert" className="ui-help text-destructive">
-          {errorMessage}
-        </p>
+        <ErrorCard
+          status={errorStatus}
+          message={errorMessage}
+          onRetry={refetch}
+          className="mb-4"
+        />
       )}
 
       <section className="ui-section">

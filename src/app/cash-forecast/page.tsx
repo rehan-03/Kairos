@@ -8,12 +8,13 @@ import ForecastChart from '@/components/ForecastChart';
 import AtRiskInflows from '@/components/AtRiskInflows';
 import InflowOutflowTable from '@/components/InflowOutflowTable';
 import CalculationPanel from '@/components/CalculationPanel';
+import ErrorCard from '@/components/ErrorCard';
 import { useCashForecast, type CashForecast } from '@/hooks/useCashForecast';
 import { getSettings } from '@/lib/api';
 import { Loader2 } from 'lucide-react';
 
 export default function CashForecastPage() {
-  const { forecast, horizon, setHorizon, isLoading, error } = useCashForecast();
+  const { forecast, horizon, setHorizon, isLoading, error, errorStatus, refetch } = useCashForecast();
   const [cashBuffer, setCashBuffer] = useState<number>(5000);
 
   useEffect(() => {
@@ -53,9 +54,11 @@ export default function CashForecastPage() {
 
       <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 space-y-6">
         {errorMessage && (
-          <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
-            {errorMessage}
-          </div>
+          <ErrorCard
+            status={errorStatus}
+            message={errorMessage}
+            onRetry={refetch}
+          />
         )}
 
         {isLoading && !forecast && (

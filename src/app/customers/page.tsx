@@ -6,7 +6,8 @@ import PageHeader from '@/components/PageHeader';
 import CustomerTable from '@/components/CustomerTable';
 import CsvImportPanel from '@/components/CsvImportPanel';
 import EmptyState from '@/components/EmptyState';
-import { getCustomers } from '@/lib/api';
+import ErrorCard from '@/components/ErrorCard';
+import { ApiError, getCustomers } from '@/lib/api';
 import type { Customer } from '@/types/customer';
 import { UserPlus, RefreshCw, Loader2 } from 'lucide-react';
 
@@ -14,16 +15,23 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [includeArchived, setIncludeArchived] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const load = useCallback(async (archived: boolean) => {
     setIsLoading(true);
-    setError(null);
+    setErrorStatus(null);
+    setErrorMessage(null);
     try {
       const list = await getCustomers({ includeArchived: archived });
       setCustomers(Array.isArray(list) ? list : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load customers.');
+      if (e instanceof ApiError) {
+        setErrorStatus(e.status);
+        setErrorMessage(e.message);
+      } else {
+        setErrorMessage(e instanceof Error ? e.message : 'Could not load customers.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -82,10 +90,12 @@ export default function CustomersPage() {
           </button>
         </div>
 
-        {error ? (
-          <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
-            {error}
-          </div>
+        {errorMessage ? (
+          <ErrorCard
+            status={errorStatus}
+            message={errorMessage}
+            onRetry={() => void load(includeArchived)}
+          />
         ) : null}
 
         {isLoading && customers.length === 0 ? (

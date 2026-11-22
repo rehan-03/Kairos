@@ -27,17 +27,24 @@ export function useGeneratePreview(period?: string) {
   const [preview, setPreview] = useState<GeneratePreview | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isConfirming, setIsConfirming] = useState<boolean>(false);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    setErrorStatus(null);
     try {
       const data = await getInvoiceGeneratePreview({ period: period ?? currentPeriod() });
       setPreview(data as GeneratePreview);
     } catch (err) {
       setPreview(null);
-      setError(err instanceof ApiError ? err.message : 'Could not load the review list.');
+      if (err instanceof ApiError) {
+        setErrorStatus(err.status);
+        setError(err.message);
+      } else {
+        setError(err instanceof Error ? err.message : 'Could not load the review list.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -114,6 +121,7 @@ export function useGeneratePreview(period?: string) {
     isLoading,
     isConfirming,
     error,
+    errorStatus,
     refetch: load,
     confirmGenerate,
   };

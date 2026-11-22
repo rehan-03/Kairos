@@ -3,6 +3,7 @@
 import { use, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import PageHeader from '@/components/PageHeader';
+import ErrorCard from '@/components/ErrorCard';
 import InvoiceAmountSummary from '@/components/InvoiceAmountSummary';
 import PaymentsList from '@/components/PaymentsList';
 import InvoiceActionBar from '@/components/InvoiceActionBar';
@@ -31,11 +32,14 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const [detail, setDetail] = useState<InvoiceDetail | null>(null);
   const [phone, setPhone] = useState('');
   const [upiId, setUpiId] = useState('');
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const load = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
+    setErrorStatus(null);
     try {
       const rawData: any = await getInvoiceById(invoiceId);
       const invoiceData = rawData?.invoice ?? rawData;
@@ -79,7 +83,12 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
       setUpiId(settings[0]?.upiId ?? '');
       setError(null);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not load this invoice.');
+      if (e instanceof ApiError) {
+        setErrorStatus(e.status);
+        setError(e.message);
+      } else {
+        setError(e instanceof Error ? e.message : 'Could not load this invoice.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -112,18 +121,19 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
   if (!detail) {
     return (
-      <div className="mx-auto w-full max-w-4xl p-6">
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-6 text-center text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
-          <p className="font-semibold text-base">Invoice not found</p>
-          <p className="mt-1 text-xs">{error ?? 'The requested invoice could not be loaded.'}</p>
-          <Link
-            href="/invoices"
-            className="mt-4 inline-flex h-8 items-center gap-1.5 rounded-md border border-rose-300 bg-card px-3 text-xs font-medium text-foreground hover:bg-muted"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            <span>Back to Invoices</span>
-          </Link>
-        </div>
+      <div className="mx-auto w-full max-w-4xl p-6 space-y-4">
+        <Link
+          href="/invoices"
+          className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground hover:bg-muted"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          <span>Back to Invoices</span>
+        </Link>
+        <ErrorCard
+          status={errorStatus}
+          message={error ?? 'The requested invoice could not be loaded.'}
+          onRetry={load}
+        />
       </div>
     );
   }

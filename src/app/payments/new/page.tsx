@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState, type ComponentProps } from 'react';
+import { useCallback, useEffect, useState, type ComponentProps } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import InvoicePicker from '@/components/InvoicePicker';
 import PaymentForm, { type PaymentFormValues } from '@/components/PaymentForm';
 import InvoiceAmountSummary from '@/components/InvoiceAmountSummary';
 import PageHeader from '@/components/PageHeader';
+import ErrorCard from '@/components/ErrorCard';
 import { ApiError, createInvoicePayment, getInvoiceById, getInvoices } from '@/lib/api';
 
 type OpenInvoiceOption = NonNullable<ComponentProps<typeof InvoicePicker>['invoices']>[number];
@@ -33,23 +34,54 @@ export default function RecordPaymentPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<any | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadErrorStatus, setLoadErrorStatus] = useState<number | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-    const preferred = params?.get('invoiceId') || params?.get('invoice') || null;
-    if (preferred) {
-      setSelectedId(preferred);
+  const loadInvoices = useCallback(async () => {
+    setLoadError(null);
+    setLoadErrorStatus(null);
+    try {
+      const all = await getInvoices();
+      const list = Array.isArray(all) ? all : (all as any)?.invoices ?? [];
+      const open = list
+        .filter((i: any) => i && typeof i === 'object')
+        .filter((i: any) => Number(i.remaining_balance ?? i.outstandingAmount ?? i.amount ?? 0) > 0);
+      setInvoices(open as unknown as OpenInvoiceOption[]);
+
+      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const preferred = params?.get('invoiceId') || params?.get('invoice') || null;
+      if (preferred) {
+        setSelectedId(preferred);
+      } else if (open.length > 0) {
+        setSelectedId(open[0].id);
+      }
+    } catch (e) {
+      if (e instanceof ApiError) {
+        setLoadErrorStatus(e.status);
+        setLoadError(e.message);
+      } else {
+        setLoadError(e instanceof Error ? e.message : 'Could not load open invoices.');
+      }
     }
-    getInvoices()
-      .then((all) => {
-        const list = Array.isArray(all) ? all : (all as any)?.invoices ?? [];
-        const open = list.filter((i: any) => Number(i.remaining_balance ?? i.outstandingAmount ?? i.amount) > 0);
-        setInvoices(open as unknown as OpenInvoiceOption[]);
-        setSelectedId((prev) => prev || (preferred && list.some((i: any) => i.id === preferred) ? preferred : preferred || open[0]?.id || null));
-      })
-      .catch((e) => setLoadError(e instanceof ApiError ? e.message : 'Could not load open invoices.'));
+  }, []);
+
+  useEffect(() => {
+    void loadInvoices();
+  }, [loadInvoices]);
+
+  const loadInvoiceDetail = useCallback(async (id: string) => {
+    try {
+      const d = await getInvoiceById(id);
+      setDetail(d ?? null);
+    } catch (e) {
+      if (e instanceof ApiError) {
+        setLoadErrorStatus(e.status);
+        setLoadError(e.message);
+      } else {
+        setLoadError(e instanceof Error ? e.message : 'Could not load this invoice.');
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -57,19 +89,8 @@ export default function RecordPaymentPage() {
       setDetail(null);
       return;
     }
-    let cancelled = false;
-    setDetail(null);
-    getInvoiceById(selectedId)
-      .then((d) => {
-        if (!cancelled) setDetail(d);
-      })
-      .catch((e) => {
-        if (!cancelled) setLoadError(e instanceof ApiError ? e.message : 'Could not load this invoice.');
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedId]);
+    void loadInvoiceDetail(selectedId);
+  }, [selectedId, loadInvoiceDetail]);
 
   // Safely normalize invoice details regardless of whether the API returned an unwrapped invoice or a nested { invoice } object
   const invoiceData: any = detail?.invoice ?? detail;
@@ -131,7 +152,7 @@ export default function RecordPaymentPage() {
 
   // Ensure picker includes current invoice if loaded
   const pickerInvoices = invoices
-    ? detail && selectedId && !invoices.some((i) => i.id === selectedId)
+    ? detail && selectedId && !invoices.some((i) => i && i.id === selectedId)
       ? [
           {
             id: selectedId,
@@ -140,9 +161,9 @@ export default function RecordPaymentPage() {
             outstandingAmount: outstanding,
             remaining_balance: outstanding,
           },
-          ...invoices,
+          ...invoices.filter((i) => i && typeof i === 'object'),
         ]
-      : invoices
+      : invoices.filter((i) => i && typeof i === 'object')
     : null;
 
   return (
@@ -157,81 +178,92 @@ export default function RecordPaymentPage() {
         }
       />
 
-      {loadError && <div className="ui-alert ui-alert-danger">{loadError}</div>}
+      <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 space-y-6">
+        {loadError && (
+          <ErrorCard
+            status={loadErrorStatus}
+            message={loadError}
+            onRetry={() => {
+              void loadInvoices();
+              if (selectedId) void loadInvoiceDetail(selectedId);
+            }}
+          />
+        )}
 
-      {isEmpty ? (
-        <div className="ui-card">
-          <div className="ui-card-body">
-            <p>No open invoices to record a payment against.</p>
-            <Link className="ui-btn ui-btn-secondary" href="/invoices">
-              Go to invoices
-            </Link>
+        {isEmpty ? (
+          <div className="ui-card">
+            <div className="ui-card-body">
+              <p>No open invoices to record a payment against.</p>
+              <Link className="ui-btn ui-btn-secondary" href="/invoices">
+                Go to invoices
+              </Link>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="ui-stack">
-          <section className="ui-section">
-            <h2 className="ui-section-title">Invoice</h2>
-            <InvoicePicker
-              invoices={pickerInvoices}
-              value={selectedId ?? ''}
-              onChange={(id) => {
-                setFormError(null);
-                setSelectedId(id);
-              }}
-              error=""
-              disabled={invoices === null || isSaving}
-            />
-          </section>
+        ) : (
+          <div className="ui-stack">
+            <section className="ui-section">
+              <h2 className="ui-section-title">Invoice</h2>
+              <InvoicePicker
+                invoices={pickerInvoices}
+                value={selectedId ?? ''}
+                onChange={(id) => {
+                  setFormError(null);
+                  setSelectedId(id);
+                }}
+                error=""
+                disabled={invoices === null || isSaving}
+              />
+            </section>
 
-          <section className="ui-section">
-            <h2 className="ui-section-title">Invoice summary</h2>
-            {detail ? (
-              <div className="ui-card">
-                <div className="ui-card-body">
-                  <dl className="ui-kv">
-                    <dt>Customer</dt>
-                    <dd>{customerName}</dd>
-                    <dt>Description</dt>
-                    <dd>{description}</dd>
-                    <dt>Due date</dt>
-                    <dd>{dueDate}</dd>
-                    <dt>Status</dt>
-                    <dd>{status}</dd>
-                  </dl>
-                  <div className="ui-stack">
-                    <InvoiceAmountSummary
-                      amount={totalAmount}
-                      paid={paid}
-                      balance={outstanding}
-                    />
+            <section className="ui-section">
+              <h2 className="ui-section-title">Invoice summary</h2>
+              {detail ? (
+                <div className="ui-card">
+                  <div className="ui-card-body">
+                    <dl className="ui-kv">
+                      <dt>Customer</dt>
+                      <dd>{customerName}</dd>
+                      <dt>Description</dt>
+                      <dd>{description}</dd>
+                      <dt>Due date</dt>
+                      <dd>{dueDate}</dd>
+                      <dt>Status</dt>
+                      <dd>{status}</dd>
+                    </dl>
+                    <div className="ui-stack">
+                      <InvoiceAmountSummary
+                        amount={totalAmount}
+                        paid={paid}
+                        balance={outstanding}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ) : (
-              <div className="ui-card">
-                <div className="ui-card-body ui-meta">Loading invoice…</div>
-              </div>
-            )}
-          </section>
+              ) : (
+                <div className="ui-card">
+                  <div className="ui-card-body ui-meta">Loading invoice…</div>
+                </div>
+              )}
+            </section>
 
-          <section className="ui-section">
-            <h2 className="ui-section-title">Payment</h2>
-            <div className="ui-card">
-              <div className="ui-card-body">
-                <PaymentForm
-                  key={selectedId ?? 'none'}
-                  outstandingAmount={outstanding}
-                  onSubmit={handleSubmit}
-                  onCancel={() => router.push(backHref)}
-                  isSaving={isSaving}
-                  error={formError}
-                />
+            <section className="ui-section">
+              <h2 className="ui-section-title">Payment</h2>
+              <div className="ui-card">
+                <div className="ui-card-body">
+                  <PaymentForm
+                    key={selectedId ?? 'none'}
+                    outstandingAmount={outstanding}
+                    onSubmit={handleSubmit}
+                    onCancel={() => router.push(backHref)}
+                    isSaving={isSaving}
+                    error={formError}
+                  />
+                </div>
               </div>
-            </div>
-          </section>
-        </div>
-      )}
+            </section>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

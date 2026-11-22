@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import ErrorCard from '@/components/ErrorCard';
 import { ApiError, getCustomers, getWhatIf } from '@/lib/api';
 import type { Customer } from '@/types/customer';
 
@@ -30,13 +31,30 @@ export default function ScenarioBuilder() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+
+  const loadCustomers = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    setErrorStatus(null);
+    try {
+      const list = await getCustomers();
+      setCustomers((Array.isArray(list) ? list : []).filter((c) => c && !c.archivedAt));
+    } catch (e: unknown) {
+      if (e instanceof ApiError) {
+        setErrorStatus(e.status);
+        setError(e.message);
+      } else {
+        setError(errorMessage(e, 'Could not load customers.'));
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    getCustomers()
-      .then((list) => setCustomers((Array.isArray(list) ? list : []).filter((c) => !c.archivedAt)))
-      .catch((e: unknown) => setError(errorMessage(e, 'Could not load customers.')))
-      .finally(() => setIsLoading(false));
-  }, []);
+    void loadCustomers();
+  }, [loadCustomers]);
 
   const safeCustomers = Array.isArray(customers) ? customers : [];
 
@@ -160,7 +178,14 @@ export default function ScenarioBuilder() {
         </fieldset>
 
         {validation && <p className="text-sm text-[#B91C1C]">{validation}</p>}
-        {error && <p className="text-sm text-[#B91C1C]">{error}</p>}
+        {error && (
+          <ErrorCard
+            status={errorStatus}
+            message={error}
+            onRetry={loadCustomers}
+            className="my-2"
+          />
+        )}
 
         <button
           type="submit"

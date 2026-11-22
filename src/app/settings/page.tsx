@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import PageHeader from '@/components/PageHeader';
 import SettingsForm from '@/components/SettingsForm';
 import ResetDemoButton from '@/components/ResetDemoButton';
-import { getSettings } from '@/lib/api';
+import ErrorCard from '@/components/ErrorCard';
+import { ApiError, getSettings } from '@/lib/api';
 import type { Setting } from '@/types/setting';
 import { Loader2, LogOut } from 'lucide-react';
 
@@ -12,16 +13,23 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<Setting | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    setErrorStatus(null);
     try {
       const rows = await getSettings();
       const current = Array.isArray(rows) ? (rows[0] ?? null) : null;
       setSettings(current);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load settings.');
+      if (e instanceof ApiError) {
+        setErrorStatus(e.status);
+        setError(e.message);
+      } else {
+        setError(e instanceof Error ? e.message : 'Could not load settings.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -45,16 +53,11 @@ export default function SettingsPage() {
 
       <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 space-y-6">
         {error ? (
-          <div className="flex flex-col gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300 sm:flex-row sm:items-center sm:justify-between">
-            <p className="min-w-0">{error}</p>
-            <button
-              type="button"
-              onClick={() => void load()}
-              className="inline-flex h-8 items-center justify-center rounded-md border border-rose-300 bg-card px-3 text-xs font-semibold text-foreground hover:bg-muted"
-            >
-              Try again
-            </button>
-          </div>
+          <ErrorCard
+            status={errorStatus}
+            message={error}
+            onRetry={() => void load()}
+          />
         ) : null}
 
         {isLoading && !settings ? (

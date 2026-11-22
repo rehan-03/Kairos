@@ -679,6 +679,9 @@ function unwrap(payload: any): any {
   if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) {
     return payload;
   }
+  if ('data' in payload && payload.data !== undefined) {
+    return payload.data;
+  }
   const keys = Object.keys(payload);
   // A single-key object whose key is not a known envelope field IS the
   // envelope. Anything else is already the entity — unwrapping a real
@@ -737,8 +740,22 @@ async function http<T = any>(url: string, init?: RequestInit): Promise<T> {
       ...((init?.headers as Record<string, string> | undefined) ?? {}),
     },
   });
+  if (res.status === 401) {
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+    }
+    throw new ApiError(401, 'Your session has expired. Please log in again.');
+  }
+
   if (!res.ok) {
-    throw new ApiError(res.status, await res.text().catch(() => res.statusText));
+    let message = res.statusText;
+    try {
+      const body = await res.json();
+      message = body?.error || body?.message || JSON.stringify(body);
+    } catch {
+      message = await res.text().catch(() => res.statusText);
+    }
+    throw new ApiError(res.status, message || `Request failed with status ${res.status}`);
   }
   if (res.status === 204) return undefined as unknown as T;
   const data = unwrap(await res.json().catch(() => undefined)) as T;

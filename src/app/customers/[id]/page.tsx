@@ -10,6 +10,7 @@ import {
 } from '@/lib/api';
 import type { Customer } from '@/types/customer';
 import PageHeader from '@/components/PageHeader';
+import ErrorCard from '@/components/ErrorCard';
 import ArchiveSection from '@/components/ArchiveSection';
 import BillingHistory from '@/components/BillingHistory';
 
@@ -88,33 +89,39 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [pageErrorStatus, setPageErrorStatus] = useState<number | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setIsLoading(true);
-      try {
-        const data: any = await getCustomerById(customerId);
-        if (cancelled) return;
-        const cust: Customer = data?.customer ?? data;
-        if (cust && typeof cust === 'object') {
-          setCustomer(cust);
-          setForm(toFormState(cust));
-        } else {
-          setPageError('Customer not found.');
-        }
-      } catch (e) {
-        if (!cancelled) setPageError(errorMessage(e));
-      } finally {
-        if (!cancelled) setIsLoading(false);
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    setPageError(null);
+    setPageErrorStatus(null);
+    try {
+      const data: any = await getCustomerById(customerId);
+      const cust: Customer = data?.customer ?? data;
+      if (cust && typeof cust === 'object' && cust.name) {
+        setCustomer(cust);
+        setForm(toFormState(cust));
+      } else {
+        setPageError('Customer not found.');
+        setPageErrorStatus(404);
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    } catch (e) {
+      if (e instanceof ApiError) {
+        setPageErrorStatus(e.status);
+        setPageError(e.message);
+      } else {
+        setPageError(errorMessage(e));
+      }
+    } finally {
+      setIsLoading(false);
+    }
   }, [customerId]);
+
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
 
   const update = (field: keyof FormState, value: string) => {
     setSaved(false);
@@ -180,11 +187,9 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
           Back to customers
         </Link>
         <PageHeader title="Customer details" subtitle={isLoading ? 'Loading customer…' : 'Customer not found'} action={null} />
-        {pageError && (
-          <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
-            {pageError}
-          </div>
-        )}
+        {pageError ? (
+          <ErrorCard status={pageErrorStatus} message={pageError} onRetry={loadData} />
+        ) : null}
       </main>
     );
   }

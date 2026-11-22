@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getCashForecast } from '@/lib/api';
+import { ApiError, getCashForecast } from '@/lib/api';
 
 export type ForecastHorizon = '30' | '60' | '90';
 export type CashForecast = Awaited<ReturnType<typeof getCashForecast>> & {
@@ -28,19 +28,26 @@ export function useCashForecast(initialHorizon: ForecastHorizon = '30') {
   const [forecast, setForecast] = useState<CashForecast | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const requestIdRef = useRef(0);
 
   const load = useCallback(async (target: ForecastHorizon) => {
     const requestId = ++requestIdRef.current;
     setIsLoading(true);
     setError(null);
+    setErrorStatus(null);
     try {
       const result = await getCashForecast({ horizon: target });
       if (requestId !== requestIdRef.current) return;
       setForecast(result);
     } catch (err) {
       if (requestId !== requestIdRef.current) return;
-      setError(err instanceof Error ? err.message : 'Could not load the cash forecast.');
+      if (err instanceof ApiError) {
+        setErrorStatus(err.status);
+        setError(err.message);
+      } else {
+        setError(err instanceof Error ? err.message : 'Could not load the cash forecast.');
+      }
     } finally {
       if (requestId === requestIdRef.current) setIsLoading(false);
     }
@@ -67,6 +74,7 @@ export function useCashForecast(initialHorizon: ForecastHorizon = '30') {
     setHorizon,
     isLoading,
     error,
+    errorStatus,
     refetch,
   };
 }
