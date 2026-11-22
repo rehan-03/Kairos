@@ -298,7 +298,7 @@ function buildSide(model: Model, horizon: Horizon, inflows: Flow[]): ForecastSid
     today: model.today,
     openingCash: model.openingCash,
     cashBuffer: model.cashBuffer,
-    horizonDays: horizon + 1,
+    horizonDays: horizon,
     receipts: inflows.map((flow) => ({ date: flow.date, amount: flow.amount })),
     outflows: model.outflows,
   });
@@ -313,8 +313,8 @@ function buildSide(model: Model, horizon: Horizon, inflows: Flow[]): ForecastSid
 
 export async function runWhatIf(query: WhatIfQuery): Promise<WhatIfResult> {
   const horizon = parseHorizon(query.horizon);
-  // Shared build covers horizon + 1 days, matching the what-if window.
-  const model = buildModel(await buildForecastInput(horizon + 1));
+  // Shared build covers the same horizon days as the cash forecast.
+  const model = buildModel(await buildForecastInput(horizon));
   const spec = resolveSpec(query, model);
   const rows = applyScenario(model, spec);
 
@@ -339,7 +339,7 @@ export async function runWhatIf(query: WhatIfQuery): Promise<WhatIfResult> {
 
 export async function getWhatIfReceipts(query: WhatIfQuery): Promise<ReceiptRow[]> {
   const horizon = parseHorizon(query.horizon);
-  const model = buildModel(await buildForecastInput(horizon + 1));
+  const model = buildModel(await buildForecastInput(horizon));
   const spec = resolveSpec(query, model);
   const rows = applyScenario(model, spec);
 
