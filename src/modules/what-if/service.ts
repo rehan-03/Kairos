@@ -4,7 +4,7 @@ import {
   addDays,
   buildForecastInput,
   type ForecastInput,
-} from '@/modules/cash-forecast/buildForecastInput';
+} from '@/modules/cash-forecast';
 import { computeForecast } from '@/lib/forecast';
 
 const DEFAULT_HORIZON = 30;
