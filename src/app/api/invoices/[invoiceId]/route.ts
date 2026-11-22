@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getAuthenticatedUserId } from '@/lib/auth';
 import {
   InvoiceServiceError,
   getInvoiceById,
@@ -32,7 +33,12 @@ function handleError(e: unknown): NextResponse {
   return NextResponse.json({ error: 'Internal error' }, { status: 500 });
 }
 
-export async function GET(_request: Request, { params }: RouteContext) {
+export async function GET(request: Request, { params }: RouteContext) {
+  const userId = await getAuthenticatedUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { invoiceId } = await params;
   try {
     const invoice = await getInvoiceById(invoiceId);
@@ -46,6 +52,11 @@ export async function GET(_request: Request, { params }: RouteContext) {
 }
 
 export async function PATCH(request: Request, { params }: RouteContext) {
+  const userId = await getAuthenticatedUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { invoiceId } = await params;
   let body: unknown;
   try {
@@ -72,7 +83,12 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   }
 }
 
-export async function DELETE(_request: Request, { params }: RouteContext) {
+export async function DELETE(request: Request, { params }: RouteContext) {
+  const userId = await getAuthenticatedUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { invoiceId } = await params;
   try {
     await deleteInvoice(invoiceId);

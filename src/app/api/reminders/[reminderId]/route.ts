@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getAuthenticatedUserId } from '@/lib/auth';
 import {
   isReminderError,
   getReminderById,
@@ -23,6 +24,11 @@ function errorMessage(e: unknown, fallback: string): string {
 }
 
 export async function GET(_request: Request, { params }: RouteContext) {
+  const userId = await getAuthenticatedUserId(_request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { reminderId } = await params;
   try {
     const reminder = await getReminderById(reminderId);
@@ -45,6 +51,11 @@ export async function GET(_request: Request, { params }: RouteContext) {
 }
 
 export async function PATCH(request: Request, { params }: RouteContext) {
+  const userId = await getAuthenticatedUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { reminderId } = await params;
   let body: unknown;
   try {

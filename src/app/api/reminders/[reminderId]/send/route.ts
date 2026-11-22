@@ -1,10 +1,16 @@
 import { NextResponse } from 'next/server';
+import { getAuthenticatedUserId } from '@/lib/auth';
 import { isReminderError, sendReminder } from '@/modules/reminders';
 
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ reminderId: string }> },
 ) {
+  const userId = await getAuthenticatedUserId(_request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const reminderId = (await params).reminderId;
 
   if (!reminderId) {

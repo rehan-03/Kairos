@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getAuthenticatedUserId } from '@/lib/auth';
 import { getInvoiceById, updateInvoice, InvoiceServiceError, type Invoice } from '@/modules/invoices';
 
 function formatDueDate(value: string | Date): string {
@@ -32,9 +33,14 @@ function buildWhatsAppUrl(message: string): string {
 }
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ invoiceId: string }> }
 ) {
+  const userId = await getAuthenticatedUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { invoiceId } = await params;
 
   try {

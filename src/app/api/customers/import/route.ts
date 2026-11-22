@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getAuthenticatedUserId } from '@/lib/auth';
 import { importCustomers, CustomerValidationError } from '@/modules/customers';
 
 export const dynamic = 'force-dynamic';
@@ -6,6 +7,11 @@ export const dynamic = 'force-dynamic';
 const MAX_CSV_CHARS = 1_000_000;
 
 export async function POST(request: Request) {
+  const userId = await getAuthenticatedUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   let body: unknown;
   try {
     body = await request.json();

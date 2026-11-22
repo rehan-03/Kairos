@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getAuthenticatedUserId } from '@/lib/auth';
 import { getBillById, updateBill } from '@/modules/bills';
 
 type RouteContext = { params: Promise<{ billId: string }> };
@@ -98,6 +99,11 @@ function validateBillPatch(
 }
 
 export async function GET(_request: Request, { params }: RouteContext) {
+  const userId = await getAuthenticatedUserId(_request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { billId } = await params;
   try {
     const bill = await getBillById(billId);
@@ -115,6 +121,11 @@ export async function GET(_request: Request, { params }: RouteContext) {
 }
 
 export async function PATCH(request: Request, { params }: RouteContext) {
+  const userId = await getAuthenticatedUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { billId } = await params;
   let body: unknown;
   try {

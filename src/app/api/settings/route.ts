@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getAuthenticatedUserId } from '@/lib/auth';
 import { getWorkspaceSettings, updateWorkspaceSettings } from '@/modules/settings';
 
 export const dynamic = 'force-dynamic';
@@ -117,7 +118,12 @@ function isNotFoundError(error: unknown): boolean {
   );
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const userId = await getAuthenticatedUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const settings = await getWorkspaceSettings();
     return NextResponse.json({ settings });
@@ -127,6 +133,11 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
+  const userId = await getAuthenticatedUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   let body: unknown;
   try {
     body = await request.json();

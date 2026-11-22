@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getAuthenticatedUserId } from '@/lib/auth';
 import { listBills, createBill } from '@/modules/bills';
 
 export const dynamic = 'force-dynamic';
@@ -127,6 +128,11 @@ function validateBillInput(body: unknown): Check<CreateBillInput> {
 }
 
 export async function GET(request: Request) {
+  const userId = await getAuthenticatedUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const includeArchived =
       new URL(request.url).searchParams.get('includeArchived') === 'true';
@@ -139,6 +145,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const userId = await getAuthenticatedUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   let body: unknown;
   try {
     body = await request.json();

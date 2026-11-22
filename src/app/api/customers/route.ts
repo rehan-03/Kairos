@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getAuthenticatedUserId } from '@/lib/auth';
 import {
   CustomerValidationError,
   createCustomer,
@@ -8,6 +9,11 @@ import {
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+  const userId = await getAuthenticatedUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const includeArchived = searchParams.get('includeArchived') === 'true';
 
@@ -21,6 +27,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const userId = await getAuthenticatedUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   let body: unknown;
   try {
     body = await request.json();

@@ -1,10 +1,16 @@
 import { NextResponse } from 'next/server';
+import { getAuthenticatedUserId } from '@/lib/auth';
 import { archiveBill } from '@/modules/bills';
 
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ billId: string }> },
 ) {
+  const userId = await getAuthenticatedUserId(_request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { billId } = await params;
 
   if (!billId) {

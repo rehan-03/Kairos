@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getAuthenticatedUserId } from '@/lib/auth';
 import {
   CustomerNotFoundError,
   CustomerValidationError,
@@ -22,6 +23,11 @@ function handleError(error: unknown) {
 }
 
 export async function GET(_request: Request, context: RouteContext) {
+  const userId = await getAuthenticatedUserId(_request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { customerId } = await context.params;
 
   try {
@@ -36,6 +42,11 @@ export async function GET(_request: Request, context: RouteContext) {
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
+  const userId = await getAuthenticatedUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { customerId } = await context.params;
 
   let body: unknown;

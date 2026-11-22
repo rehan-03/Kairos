@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getAuthenticatedUserId } from '@/lib/auth';
 import {
   ForecastValidationError,
   parseHorizon,
@@ -8,6 +9,11 @@ import {
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+  const userId = await getAuthenticatedUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
 
   let horizon: 30 | 60 | 90;

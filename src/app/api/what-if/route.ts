@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getAuthenticatedUserId } from '@/lib/auth';
 import { isWhatIfValidationError, runWhatIf } from '@/modules/what-if';
 
 export const dynamic = 'force-dynamic';
@@ -24,6 +25,11 @@ function isPreset(value: string): value is Preset {
 }
 
 export async function GET(request: Request) {
+  const userId = await getAuthenticatedUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
 
   const horizonParam = searchParams.get('horizon') ?? '30';

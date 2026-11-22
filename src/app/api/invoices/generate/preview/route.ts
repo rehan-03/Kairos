@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getAuthenticatedUserId } from '@/lib/auth';
 import { InvoiceServiceError, previewInvoiceGeneration } from '@/modules/invoices';
 
 export const dynamic = 'force-dynamic';
@@ -12,6 +13,11 @@ function currentPeriod(): string {
 }
 
 export async function GET(request: Request) {
+  const userId = await getAuthenticatedUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const period = searchParams.get('period') ?? currentPeriod();
 
