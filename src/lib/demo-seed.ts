@@ -18,6 +18,11 @@ function daysAgo(n: number): Date {
   return new Date(startOfTodayUtc().getTime() - n * DAY_MS);
 }
 
+/** A date the given number of days from today (UTC); negative values are in the past. */
+function daysFromToday(n: number): Date {
+  return new Date(startOfTodayUtc().getTime() + n * DAY_MS);
+}
+
 /** Deletes every demo row, children before parents. */
 export async function clearDemoData(db: Db): Promise<void> {
   await db.payment.deleteMany();
@@ -81,9 +86,12 @@ export async function seedDemoData(db: Db): Promise<void> {
 
 function billRows(): Row[] {
   return [
-    { name: 'Flat rent', amount: 18000, dueDate: new Date('2026-12-01T00:00:00'), recurrence: 'monthly', archivedAt: new Date(Date.now() - 3 * DAY_MS) },
-    { name: 'Electricity bill', amount: 1450, dueDate: new Date('2026-11-28T00:00:00'), recurrence: 'monthly', archivedAt: new Date(Date.now() - 6 * DAY_MS) },
-    { name: 'Broadband internet', amount: 999, dueDate: new Date('2026-12-03T00:00:00'), recurrence: 'monthly', archivedAt: new Date(Date.now() - 9 * DAY_MS) },
+    { name: 'Flat rent', amount: 8000, dueDate: daysFromToday(7), recurrence: 'monthly', archivedAt: null },
+    { name: 'Assistant salary', amount: 7000, dueDate: daysFromToday(9), recurrence: 'monthly', archivedAt: null },
+    { name: 'Electricity bill', amount: 900, dueDate: daysFromToday(12), recurrence: 'monthly', archivedAt: null },
+    { name: 'Broadband internet', amount: 900, dueDate: daysFromToday(12), recurrence: 'monthly', archivedAt: null },
+    { name: 'Supplies', amount: 2500, dueDate: daysFromToday(17), recurrence: 'one_off', archivedAt: null },
+    // Archived bills are not counted by the forecast.
     { name: 'Phone plan', amount: 399, dueDate: new Date('2026-11-25T00:00:00'), recurrence: 'monthly', archivedAt: new Date(Date.now() - 12 * DAY_MS) },
     { name: 'Laptop EMI', amount: 4200, dueDate: new Date('2026-12-05T00:00:00'), recurrence: 'monthly', archivedAt: new Date(Date.now() - 15 * DAY_MS) },
     { name: 'Car insurance renewal', amount: 8500, dueDate: new Date('2026-12-15T00:00:00'), recurrence: 'one_off', archivedAt: new Date(Date.now() - 18 * DAY_MS) },
@@ -117,20 +125,17 @@ function settingRow(): Row {
 }
 
 /**
- * Invoices 0-4 are the five overdue ones: 11,500 in total, due 21, 16, 12, 9 and 4 days
- * before the day the seed runs.
+ * Invoices 0-4 are the five overdue ones: 11,500 in total. Each is due so that the customer's
+ * typical delay (9 days for customers 0-3, 8 for customer 4) lands the receipt on today+7.
  */
 function invoiceRows(customerIds: string[]): Row[] {
   const overdue = (
     customer: number,
     amount: number,
-    ageDays: number,
+    dueOffset: number,
     description: string,
     billingPeriod: string,
     billingType: string,
-    sentAt: string,
-    lastReminderAt: string,
-    expectedReceiptDate: string,
   ): Row => ({
     customerId: pick(customerIds, customer),
     billingType,
@@ -139,24 +144,25 @@ function invoiceRows(customerIds: string[]): Row[] {
     amount,
     outstandingAmount: amount,
     status: 'overdue',
-    issueDate: daysAgo(ageDays + 5),
-    dueDate: daysAgo(ageDays),
-    sentAt: new Date(sentAt),
-    lastReminderAt: new Date(lastReminderAt),
-    expectedReceiptDate: new Date(expectedReceiptDate),
+    issueDate: daysFromToday(dueOffset - 5),
+    dueDate: daysFromToday(dueOffset),
+    sentAt: daysFromToday(dueOffset - 5),
+    lastReminderAt: daysFromToday(-1),
+    expectedReceiptDate: daysFromToday(7),
   });
   return [
-    overdue(0, 2000, 21, 'Tuition fee, November 2026', '2026-11', 'recurring', '2026-11-12T18:40:00', '2026-11-13T19:10:00', '2026-11-24T00:00:00'),
-    overdue(1, 1500, 16, 'Tuition fee, November 2026', '2026-11', 'recurring', '2026-11-05T09:15:00', '2026-11-13T19:10:00', '2026-11-22T00:00:00'),
-    overdue(2, 2000, 12, 'Tuition fee, November 2026', '2026-11', 'recurring', '2026-11-02T10:05:00', '2026-11-10T18:15:00', '2026-11-28T00:00:00'),
-    overdue(3, 3000, 9, 'Tuition fee, November 2026', '2026-11', 'recurring', '2026-11-09T19:20:00', '2026-11-16T20:05:00', '2026-11-28T00:00:00'),
-    overdue(4, 3000, 4, 'Tuition fee, October 2026', '2026-10', 'recurring', '2026-10-26T08:50:00', '2026-11-16T20:05:00', '2026-11-30T00:00:00'),
+    overdue(0, 2000, -2, 'Tuition fee, November 2026', '2026-11', 'recurring'),
+    overdue(1, 1500, -2, 'Tuition fee, November 2026', '2026-11', 'recurring'),
+    overdue(2, 2000, -2, 'Tuition fee, November 2026', '2026-11', 'recurring'),
+    overdue(3, 3000, -2, 'Tuition fee, November 2026', '2026-11', 'recurring'),
+    overdue(4, 3000, -1, 'Tuition fee, October 2026', '2026-10', 'recurring'),
     {
       customerId: pick(customerIds, 5), billingType: 'one_off', billingPeriod: '2026-10',
       description: 'Workshop fee: Class 9 science weekend', amount: 4000, outstandingAmount: 4000, status: 'sent',
-      issueDate: new Date('2026-11-21T00:00:00'), dueDate: new Date('2026-12-01T00:00:00'),
-      sentAt: new Date('2026-11-21T08:30:00'), lastReminderAt: new Date('2026-11-13T19:10:00'), expectedReceiptDate: new Date('2026-11-30T00:00:00'),
+      issueDate: daysFromToday(5), dueDate: daysFromToday(10),
+      sentAt: daysFromToday(5), lastReminderAt: null, expectedReceiptDate: daysFromToday(11),
     },
+
     {
       customerId: pick(customerIds, 6), billingType: 'recurring', billingPeriod: '2026-10',
       description: 'Tuition fee, October 2026', amount: 2000, outstandingAmount: 0, status: 'paid',
