@@ -10,7 +10,6 @@ import PageHeader from '@/components/PageHeader';
 import { ApiError, createInvoicePayment, getInvoiceById, getInvoices } from '@/lib/api';
 
 type OpenInvoiceOption = NonNullable<ComponentProps<typeof InvoicePicker>['invoices']>[number];
-type InvoiceDetail = Awaited<ReturnType<typeof getInvoiceById>>;
 
 const money = (n: number) =>
   `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -32,18 +31,23 @@ export default function RecordPaymentPage() {
   const router = useRouter();
   const [invoices, setInvoices] = useState<OpenInvoiceOption[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<InvoiceDetail | null>(null);
+  const [detail, setDetail] = useState<any | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    const preferred = new URLSearchParams(window.location.search).get('invoice');
+    const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const preferred = params?.get('invoiceId') || params?.get('invoice') || null;
+    if (preferred) {
+      setSelectedId(preferred);
+    }
     getInvoices()
       .then((all) => {
-        const open = all.filter((i) => Number(i.remaining_balance) > 0);
+        const list = Array.isArray(all) ? all : (all as any)?.invoices ?? [];
+        const open = list.filter((i: any) => Number(i.remaining_balance ?? i.outstandingAmount ?? i.amount) > 0);
         setInvoices(open as unknown as OpenInvoiceOption[]);
-        setSelectedId((prev) => prev ?? open.find((i) => i.id === preferred)?.id ?? open[0]?.id ?? null);
+        setSelectedId((prev) => prev || (preferred && list.some((i: any) => i.id === preferred) ? preferred : preferred || open[0]?.id || null));
       })
       .catch((e) => setLoadError(e instanceof ApiError ? e.message : 'Could not load open invoices.'));
   }, []);
@@ -67,9 +71,38 @@ export default function RecordPaymentPage() {
     };
   }, [selectedId]);
 
+  // Safely normalize invoice details regardless of whether the API returned an unwrapped invoice or a nested { invoice } object
+  const invoiceData: any = detail?.invoice ?? detail;
+  const customerName: string =
+    detail?.customer_name ??
+    detail?.customerName ??
+    invoiceData?.customer_name ??
+    invoiceData?.customerName ??
+    'Customer';
+  const description: string = invoiceData?.description ?? '—';
+  const rawDate = invoiceData?.dueDate ?? invoiceData?.due_date;
+  const dueDate: string = rawDate
+    ? new Date(rawDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+    : '—';
+  const status: string = invoiceData?.status ? String(invoiceData.status) : '—';
+  const totalAmount: number = Number(invoiceData?.amount ?? 0);
+  const outstanding: number =
+    invoiceData?.outstandingAmount !== undefined && !Number.isNaN(Number(invoiceData.outstandingAmount))
+      ? Number(invoiceData.outstandingAmount)
+      : invoiceData?.remaining_balance !== undefined && !Number.isNaN(Number(invoiceData.remaining_balance))
+      ? Number(invoiceData.remaining_balance)
+      : detail?.remaining_balance !== undefined && !Number.isNaN(Number(detail.remaining_balance))
+      ? Number(detail.remaining_balance)
+      : totalAmount;
+  const paid: number =
+    invoiceData?.paid_amount !== undefined && !Number.isNaN(Number(invoiceData.paid_amount))
+      ? Number(invoiceData.paid_amount)
+      : detail?.paid_amount !== undefined && !Number.isNaN(Number(detail.paid_amount))
+      ? Number(detail.paid_amount)
+      : Math.max(0, totalAmount - outstanding);
+
   async function handleSubmit(values: PaymentFormValues) {
     if (!selectedId || !detail) return;
-    const outstanding = Number(detail.remaining_balance);
     const problem = validatePayment(values, outstanding);
     if (problem) {
       setFormError(problem);
@@ -94,8 +127,23 @@ export default function RecordPaymentPage() {
   }
 
   const backHref = selectedId ? `/invoices/${selectedId}` : '/invoices';
-  const outstanding = detail ? Number(detail.remaining_balance) : null;
-  const isEmpty = invoices !== null && invoices.length === 0;
+  const isEmpty = invoices !== null && invoices.length === 0 && !selectedId;
+
+  // Ensure picker includes current invoice if loaded
+  const pickerInvoices = invoices
+    ? detail && selectedId && !invoices.some((i) => i.id === selectedId)
+      ? [
+          {
+            id: selectedId,
+            customerName: customerName,
+            description: description,
+            outstandingAmount: outstanding,
+            remaining_balance: outstanding,
+          },
+          ...invoices,
+        ]
+      : invoices
+    : null;
 
   return (
     <div data-nexen-component="nx_app_payments_new_page" className="ui-page">
@@ -125,7 +173,7 @@ export default function RecordPaymentPage() {
           <section className="ui-section">
             <h2 className="ui-section-title">Invoice</h2>
             <InvoicePicker
-              invoices={invoices}
+              invoices={pickerInvoices}
               value={selectedId ?? ''}
               onChange={(id) => {
                 setFormError(null);
@@ -143,20 +191,19 @@ export default function RecordPaymentPage() {
                 <div className="ui-card-body">
                   <dl className="ui-kv">
                     <dt>Customer</dt>
-                    <dd>{detail.customer_name}</dd>
+                    <dd>{customerName}</dd>
                     <dt>Description</dt>
-                    <dd>{detail.invoice.description ?? '—'}</dd>
+                    <dd>{description}</dd>
                     <dt>Due date</dt>
-                    <dd>{new Date(detail.invoice.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</dd>
+                    <dd>{dueDate}</dd>
                     <dt>Status</dt>
-                    <dd>{String(detail.invoice.status)}</dd>
+                    <dd>{status}</dd>
                   </dl>
                   <div className="ui-stack">
                     <InvoiceAmountSummary
-                      amount={Number(detail.invoice.amount)}
-                      paid={Number(detail.paid_amount)}
-                      balance={Number(detail.remaining_balance)}
-                      recordPaymentHref={`/payments/new?invoice=${selectedId}`}
+                      amount={totalAmount}
+                      paid={paid}
+                      balance={outstanding}
                     />
                   </div>
                 </div>

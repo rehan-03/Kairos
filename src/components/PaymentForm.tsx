@@ -34,7 +34,8 @@ export default function PaymentForm({
   isSaving = false,
   error,
 }: PaymentFormProps) {
-  const outstanding = typeof outstandingAmount === 'number' ? outstandingAmount : 0;
+  const outstanding =
+    typeof outstandingAmount === 'number' && !Number.isNaN(outstandingAmount) ? outstandingAmount : 0;
   const hasBalance = outstanding > 0;
 
   const [amountInput, setAmountInput] = useState('');

@@ -47,6 +47,14 @@ export default function InvoicePicker({
     return balance > 0;
   });
 
+  if (invoices === null || invoices === undefined) {
+    return (
+      <div className="rounded-[var(--radius)] border border-border bg-card p-4 shadow-sm">
+        <p className="text-sm font-medium text-muted-foreground">Loading invoices…</p>
+      </div>
+    );
+  }
+
   if (safeInvoices.length === 0) {
     return (
       <div className="rounded-[var(--radius)] border border-border bg-card p-4 shadow-sm">
