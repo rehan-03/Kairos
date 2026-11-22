@@ -1,134 +1,260 @@
 # Kairos
 
-## What Kairos is
+> Deterministic cash runway, batch invoicing, and smart payment recovery for solo service businesses and independent educators.
 
-Kairos is a back office for solo service businesses. It keeps track of the customers who pay you fees, the invoices you send, the payments that come in, the bills you have to pay, and how much cash you are likely to have over the next 30 days. The seeded demo is a home tutor and a studio owner, with customers paying monthly or per-workshop fees.
+---
 
-## The problem
+## Overview
 
-Solo operators usually run this in a notepad, a spreadsheet, and a chat app. Nobody is tracking who is late, what to chase this week, or whether next month's rent is covered. Kairos puts those in one place and makes the follow-up quick to do.
+Solo service operators—tutors, coaches, freelance studio owners, and independent consultants—frequently track client billings, payments, and expenses across scattered spreadsheets, notebook ledgers, and WhatsApp threads. This fragmented workflow often causes late follow-ups, delayed cash flow, and unexpected shortfalls when fixed expenses like rent or assistant salaries come due.
 
-## Features
+**Kairos** provides a single, unified back-office engine that connects client attendance and billing with payment recovery and deterministic cash forecasting. Rather than relying on guesswork, Kairos tracks actual customer payment delays, projects cash runway over a rolling 30-day horizon, and simplifies client communications with UPI QR codes and prefilled WhatsApp reminder workflows.
 
-- **Customers**: add customers by hand or import a CSV (`POST /api/customers/import`).
-- **Invoices**: create invoices, or generate them from each customer's billing settings (`/generate-invoices`).
-- **UPI QR**: each invoice has a UPI QR code for the customer to pay.
-- **Prefilled WhatsApp messages**: a reminder opens as a ready-to-send message. See the note under Limitations for exactly what the button does.
-- **Reminders with tone**: reminder drafts in friendly, firm, or final tone, in English or Hinglish. Drafts come from a template, or from an AI model when an AI key is set.
-- **Bills**: track one-off and monthly bills with due dates.
-- **30-day cash forecast**: projects cash from opening cash, expected receipts, and bills.
-- **What-if scenario**: see how the forecast changes under a different assumption.
-- **Payments**: record a payment against an invoice (UPI, cash, or other).
+---
 
-## Tech stack
+## Key Features
 
-- Next.js 15 (App Router) with React and TypeScript
-- Prisma 6 as the ORM
-- PostgreSQL hosted on Supabase
-- Tailwind CSS and Radix UI for the interface
-- Vitest for tests
-- Deployed on Vercel
+### 1. Dashboard: "Who Owes Me" (`/`)
+- **Overdue Tracking**: Instant visibility into outstanding receivables, categorized by aging buckets (`0–7 days`, `8–14 days`, and `15+ days`).
+- **Chase Priority Queue**: Automatically ranks overdue invoices by urgency and delay risk so operators know whom to follow up with first.
+- **Cash Cushion Alert**: Highlights whether current cash reserves fall below the safe cash buffer threshold before major outflows.
 
-## Local run
+### 2. Client Management (`/customers`)
+- **Recurring & One-Off Profiles**: Support for monthly retainer students and project-based clients.
+- **Per-Client Payment Delay Tracking**: Captures each client's typical delay in days (`typicalDelayDays`) to feed the forecasting engine.
+- **CSV Bulk Import**: Upload existing client rosters via `POST /api/customers/import`.
+- **Demo Autofill**: Quick one-click demo data population on `/customers/new` for rapid onboarding and demonstrations.
 
-Requirements: Node.js and npm, and a PostgreSQL database. The database used here is a Supabase project.
+### 3. Invoicing & Batch Generation (`/invoices`, `/generate-invoices`)
+- **One-Tap Monthly Invoice Batching**: Review all active recurring clients and generate drafts in one click (`/generate-invoices`). Automatically skips clients already billed for the active period.
+- **One-Off Invoicing**: Create standalone invoices for workshops, trial classes, or custom milestones (`/invoices/new`) with built-in demo autofill.
+- **Dynamic UPI QR Code**: Each invoice generates a zero-fee Bharat UPI QR code based on the workspace VPA/UPI ID and the exact outstanding balance.
+- **Invoice PDF Export**: Downloadable invoice receipts (`/api/invoices/:id/pdf`).
 
-1. Copy the example env file and fill in the values.
+### 4. Smart WhatsApp Payment Recovery (`/reminder-draft`)
+- **Deterministic Number Consistency**: The numbers (amount, due date, UPI ID) come directly from verified records, while wording is tailored to the context.
+- **Adaptive Tone Selection**: Choose from **Friendly**, **Firm**, or **Final** notice tones in **English** or **Hinglish**.
+- **Synchronous WhatsApp Web & App Dispatch**: Opens `https://wa.me/` synchronously to bypass browser popup blockers.
+- **Demo-Safe Mode**: A dedicated setting (`demoSafeWhatsApp`) ensures synthetic or seeded test numbers are never accidentally messaged during demos or staging evaluations.
+- **Clipboard Fallback & Delivery Logging**: Copy messages directly to the clipboard if the browser restricts URL schemes, and mark reminders as sent to update dashboard chase timelines.
 
-   Windows Command Prompt:
-   ```bat
-   copy .env.example .env
-   ```
+### 5. Payments & Receipts (`/payments/new`)
+- **Multi-Method Recording**: Log payments via UPI, Cash, or Bank Transfer against open invoices.
+- **Live Balance Tracking**: Displays real-time balance calculations before and after partial or full payments.
 
-   PowerShell:
-   ```powershell
-   Copy-Item .env.example .env
-   ```
+### 6. Outflows & Fixed Obligations (`/bills`)
+- **Expense Scheduling**: Track recurring overhead (rent, assistant salaries, broadband, software) alongside one-off operational expenses.
+- **Cash Flow Integration**: Every scheduled outflow directly impacts daily runway projections.
 
-   Then edit `.env`. The variables are named in `.env.example`. For the database, use the Supabase **session pooler** string (port 5432) for local setup:
+### 7. Deterministic Cash Forecast (`/cash-forecast`)
+- **Rolling 30-Day Runway**: Combines starting bank balance, expected client receipts (adjusted by typical delay days), and upcoming bill dates.
+- **At-Risk Inflow Identification**: Flags receivables that may arrive too late to cover near-term obligations.
+- **Lowest Balance & Shortfall Alerts**: Pinpoints the exact calendar date when cash reserves drop to their lowest point.
 
-   ```
-   DATABASE_URL=postgresql://postgres.<project-ref>:<your-supabase-password>@aws-0-<region>.pooler.supabase.com:5432/postgres
-   AUTH_SECRET=<a-long-random-string>
-   ```
+### 8. What-If Scenario Simulator (`/what-if-scenario`)
+- **Stress-Testing Cash Flow**: Interactively simulate payment delays (e.g., your 5 latest payers slipping by 15 days) without altering production data.
+- **Instant Impact Delta**: Visualizes the change in minimum cash cushion and days until shortfall.
 
-   Replace the placeholders with your own values. Do not commit `.env`.
+---
 
-2. Install dependencies:
-
-   ```bash
-   npm install
-   ```
-
-3. One-time schema setup. This runs `prisma generate`, pushes the schema to the database with `prisma db push`, and seeds the demo data:
-
-   ```bash
-   node scripts/setup-db.mjs
-   ```
-
-   It writes to whatever database `DATABASE_URL` points at, so point it at a database you intend to use for this app. It skips the schema push and seed if `DATABASE_URL` is missing or is the placeholder value.
-
-4. Start the dev server:
-
-   ```bash
-   npm run dev
-   ```
-
-   The app runs at <http://localhost:3000>.
-
-Other scripts: `npm run build`, `npm run lint`, `npm test` (runs `vitest run`; the forecast tests are in `src/lib/forecast.test.ts`).
-
-## Demo sign-in
-
-Open the app and click **Continue as demo**. No password is needed. This calls `POST /api/auth/demo`, which starts a session for the seeded user `demo@example.com`.
-
-`.env.example` also lists a `DEMO_PASSWORD` variable, but the app code does not read it yet, so it has no effect. Demo sign-in does not depend on it.
-
-## Demo script
-
-1. Sign in with **Continue as demo**. You land on **Who Owes Me** (`/`).
-2. Check the overdue list. The seed has five overdue tuition invoices, totalling Rs 11,500, from Ananya, Rohan, Kabir, Diya and Sia.
-3. Open an overdue customer such as Kabir, then go to **Reminder Draft** (`/reminder-draft`). Pick a tone and language, and read the draft.
-4. Click **Send on WhatsApp**. On a phone, WhatsApp opens with the message filled in. On a desktop, the message is copied to the clipboard and you paste it into WhatsApp yourself. Kairos does not send it.
-5. Open **Payments** (`/payments/new`) and record a payment against one of the open invoices, for example the Vihaan workshop fee.
-6. Open **Bills** (`/bills`) to see the seeded rent, salary, electricity, broadband and supplies bills with their due dates.
-7. Open **Cash Forecast** (`/cash-forecast`) to see the 30-day projection from the seeded opening cash of Rs 6,000. Then open **What-If Scenario** (`/what-if-scenario`) to test a change.
-
-## Limitations
-
-- The 60-day and 90-day forecast views are shown as "coming soon" and are disabled in the UI pending validation. Only the 30-day view is enabled.
-- WhatsApp is not sent by the app. The app only prepares a message (opened on mobile, copied on desktop). The owner sends it.
-- The free Supabase database may pause after inactivity. The first request after that can take a moment while it wakes up.
-
-## How this was built
-
-Part of the project was scaffolded with Antigravity. The rest was built and verified in the Codebenders IDE, using its phase flow. Build, lint, and test results were checked by running the project scripts in that environment.
-
-## Deployment
-
-Deploy on Vercel from the Git repository.
-
-Vercel project settings:
-
-- Framework preset: Next.js
-- Install command: `npm install`
-- Build command: `npm run build`
-
-Environment variables to set in Vercel (names only; set the values in Vercel, not in this file):
-
-- `DATABASE_URL`
-- `AUTH_SECRET`
-- `SESSION_COOKIE_NAME`
-- `GROQ_API_KEY`
-- `ANTHROPIC_API_KEY`
-- `UPI_ID`
-- `NEXT_PUBLIC_MOCK_MODE`
-- `MOCK_MODE`
-
-On Vercel, `DATABASE_URL` must be the Supabase **transaction pooler** string (port 6543, ending `?pgbouncer=true`), for example:
+## Tech Stack & Architecture
 
 ```
-postgresql://postgres.<project-ref>:<your-supabase-password>@aws-0-<region>.pooler.supabase.com:6543/postgres?pgbouncer=true
+┌────────────────────────────────────────────────────────┐
+│                   Next.js 15 App Router                │
+│         (React 18, TypeScript, Tailwind CSS)           │
+└───────────┬────────────────────────────────┬───────────┘
+            │                                │
+            ▼                                ▼
+┌───────────────────────┐        ┌───────────────────────┐
+│     Client Pages      │        │  Server Route Handlers│
+│ (SWR Cache, Safe HTTP)│        │   (Session Auth, REST)│
+└───────────┬───────────┘        └───────────┬───────────┘
+            │                                │
+            ▼                                ▼
+┌────────────────────────────────────────────────────────┐
+│                    Domain Modules                      │
+│ (Customers, Invoices, Cash Forecast, Reminders, Bills) │
+└───────────────────────────┬────────────────────────────┘
+                            │
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│                 Prisma 6 Client & ORM                  │
+│       (PostgreSQL via Supabase Transaction Pooler)     │
+└────────────────────────────────────────────────────────┘
 ```
 
-The one-time schema setup (`node scripts/setup-db.mjs`) uses the **session pooler** string (port 5432) instead, as shown in Local run.
+- **Frontend & Fullstack Framework**: [Next.js 15](https://nextjs.org/) (App Router, Server & Client Components)
+- **Language**: [TypeScript](https://www.typescriptlang.org/) (Strict mode)
+- **Database & ORM**: [PostgreSQL](https://www.postgresql.org/) managed on [Supabase](https://supabase.com/), queried through [Prisma 6](https://www.prisma.io/)
+- **UI Components & Styling**: [Tailwind CSS](https://tailwindcss.com/), [Radix UI](https://www.radix-ui.com/), and [Lucide Icons](https://lucide.dev/)
+- **Authentication**: Stateless, signed JWT sessions via [jose](https://github.com/panva/jose) with HTTP-only cookies and bearer fallback
+- **Testing**: [Vitest](https://vitest.dev/) for unit and integration testing of financial algorithms, preview generation, and dispatch links
+- **Scaffolding & Tooling**: Built and verified with **CodeBenders** and **Nexen AI** workflows
+
+---
+
+## Project Structure
+
+```
+├── prisma/
+│   ├── schema.prisma        # Database schema (Customers, Invoices, Payments, Bills, Settings, Users)
+│   └── seed.ts              # Seed script for realistic demo tutor workspace
+├── public/                  # Static assets and icons
+├── scripts/
+│   └── setup-db.mjs         # Automated schema synchronization and database bootstrapper
+├── src/
+│   ├── app/                 # Next.js App Router endpoints & UI pages
+│   │   ├── (auth)/login     # Authentication page with "Continue as demo"
+│   │   ├── api/             # REST endpoints (customers, invoices, payments, bills, forecast, etc.)
+│   │   ├── bills/           # Outflow expense tracking
+│   │   ├── cash-forecast/   # 30-day runway projection
+│   │   ├── customers/       # Client roster and detail views
+│   │   ├── generate-invoices# Batch invoice creation
+│   │   ├── invoices/        # Invoice listing and detail views
+│   │   ├── payments/new     # Record payment screen
+│   │   ├── reminder-draft/  # WhatsApp reminder composer
+│   │   ├── settings/        # Workspace settings & demo reset
+│   │   └── what-if-scenario/# Interactive financial scenario simulator
+│   ├── components/          # Reusable UI components (Tables, Pickers, Forms, ErrorCards)
+│   ├── hooks/               # Client-side hooks (useCashForecast, useGeneratePreview)
+│   ├── lib/                 # Core utilities (api.ts, auth.ts, db.ts, demo-seed.ts, whatsapp.ts)
+│   ├── modules/             # Decoupled business logic services and repositories
+│   │   ├── bills/           # Bill lifecycle and queries
+│   │   ├── cash-forecast/   # Cash calculation algorithms & daily timeline projection
+│   │   ├── customers/       # Customer validations and management
+│   │   ├── dashboard/       # Aggregation for aging buckets and chase priorities
+│   │   ├── invoices/        # Invoicing, payments roll-up, and generate preview logic
+│   │   ├── reminders/       # WhatsApp drafting and template fallback
+│   │   └── settings/        # Workspace configuration and demo resets
+│   └── types/               # Shared TypeScript domain contracts
+```
+
+---
+
+## Installation & Setup
+
+### Prerequisites
+- **Node.js**: v18.18.0 or higher (v20+ recommended)
+- **npm** or compatible package manager
+- **PostgreSQL Database**: Local PostgreSQL instance or a [Supabase](https://supabase.com/) project
+
+### 1. Clone & Install Dependencies
+```bash
+git clone https://github.com/rehan-03/Kairos.git
+cd Kairos
+npm install
+```
+
+### 2. Configure Environment Variables
+Copy `.env.example` to `.env`:
+
+```bash
+# On Windows PowerShell
+Copy-Item .env.example .env
+
+# On Linux / macOS
+cp .env.example .env
+```
+
+Configure your `.env` variables (see [Environment Variables](#environment-variables)).
+
+### 3. Initialize the Database & Seed
+Generate the Prisma Client, push schema definitions to the database, and seed the demo workspace:
+
+```bash
+# Generate Prisma Client
+npx prisma generate
+
+# Push schema directly to database
+npx prisma db push
+
+# (Optional) Run the automated bootstrap script
+node scripts/setup-db.mjs
+```
+
+### 4. Run the Development Server
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+---
+
+## Environment Variables
+
+| Variable | Required | Description | Example |
+| :--- | :---: | :--- | :--- |
+| `DATABASE_URL` | **Yes** | PostgreSQL connection string. Use port `5432` locally or transaction pooler `6543` on serverless. | `postgresql://postgres:pass@aws-0-region.pooler.supabase.com:6543/postgres?pgbouncer=true` |
+| `AUTH_SECRET` | **Yes** | 32+ character random secret used to sign session JWTs. | `b8f72a4...39c0` |
+| `SESSION_COOKIE_NAME`| No | Custom session cookie name (defaults to `auth_token`). | `kairos_session` |
+| `UPI_ID` | No | Default UPI ID for payment QR codes. Can also be set in `/settings`. | `tutor@oksbi` |
+| `GROQ_API_KEY` | No | Optional Groq key for LLM-powered reminder generation. | `gsk_...` |
+| `ANTHROPIC_API_KEY` | No | Optional Anthropic key fallback for reminder generation. | `sk-ant-...` |
+| `MOCK_MODE` | No | Set to `true` to run against in-memory mock data without a DB. | `false` |
+
+> [!IMPORTANT]
+> Never commit `.env` or expose production credentials in version control.
+
+---
+
+## Usage Instructions
+
+### Exploring the Seeded Demo Workspace
+1. Navigate to `/login` and select **Continue as demo**.
+2. **Review Receivables**:
+   - On the **Who Owes Me** dashboard (`/`), observe the 5 overdue invoices totaling ₹11,500.
+3. **Draft a Payment Follow-Up**:
+   - Click **Chase** on Kabir's invoice.
+   - Choose a tone (**Friendly**, **Firm**, or **Final**) and language (**English** or **Hinglish**).
+   - Test **Open in WhatsApp** (or **Copy message**). Notice that demo-safe mode prevents synthetic numbers from being messaged.
+4. **Record a Payment**:
+   - Go to `/payments/new`, pick an open invoice, and record a payment. Notice the real-time balance update.
+5. **Run Batch Invoice Generation**:
+   - Go to `/generate-invoices`. Inspect the 15 recurring customers; 12 are already invoiced, leaving 3 unbilled students. Tap **Generate 3 invoices**.
+6. **Simulate Financial What-If Scenarios**:
+   - Navigate to `/what-if-scenario`. Select the 5 latest-paying students and simulate a 15-day delay to see the impact on cash runway before rent day.
+7. **Reset Demo Workspace**:
+   - Navigate to `/settings` and tap **Reset data** at any time to reseed standard demo records for your user account.
+
+---
+
+## Test Suite & Code Quality
+
+Kairos includes comprehensive test suites covering forecast calculations, WhatsApp URL generation, and invoice preview generation:
+
+```bash
+# Run unit & integration test suites
+npm test
+
+# Run linter checks
+npm run lint
+
+# Run full production build verification
+npm run build
+```
+
+---
+
+## Deployment (Vercel)
+
+Kairos is optimized for one-click deployment on [Vercel](https://vercel.com):
+
+1. **Connect Repository**: Import the Kairos GitHub repository into Vercel.
+2. **Build Settings**:
+   - **Framework Preset**: `Next.js`
+   - **Install Command**: `npm install`
+   - **Build Command**: `prisma generate && next build`
+3. **Environment Variables**:
+   - Set `DATABASE_URL` to your hosted PostgreSQL / Supabase connection pooler string (port `6543` with `?pgbouncer=true`).
+   - Set `AUTH_SECRET` to a cryptographically secure random string.
+   - Set optional LLM keys (`GROQ_API_KEY` / `ANTHROPIC_API_KEY`) if AI-generated reminder wording is required.
+4. **Deploy & Synchronize**:
+   - Once deployed, execute `npx prisma db push` against the hosted database to ensure all indexes and tables are synchronized.
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
