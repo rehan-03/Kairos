@@ -1,3 +1,5 @@
+import { db } from '@/lib/db';
+import { clearDemoData, seedDemoData } from '@/lib/demo-seed';
 import {
   createSetting as createSettingRow,
   deleteSetting as deleteSettingRow,
@@ -181,16 +183,19 @@ export async function updateWorkspaceSettings(input: Record<string, unknown>) {
 }
 
 /**
- * Resets settings to the seed defaults: removes every existing settings row and
- * writes one fresh row. Other modules reset their own tables through their own
- * public functions; this service only owns the settings table.
+ * Resets the whole demo workspace to the seed data in one transaction: deletes every
+ * customer, invoice, payment, reminder, bill and setting, then reseeds them.
+ * Running it twice in a row leaves the same data each time.
  */
 export async function resetDemoSettings() {
-  const existing = await listSettingRows();
-  for (const row of existing) {
-    await deleteSettingRow(row.id);
-  }
-  const settings = await createSettingRow(seedSettingsData());
+  const settings = await db.$transaction(
+    async (tx) => {
+      await clearDemoData(tx);
+      await seedDemoData(tx);
+      return tx.setting.findFirst();
+    },
+    { timeout: 30000 },
+  );
   return { settings };
 }
 
