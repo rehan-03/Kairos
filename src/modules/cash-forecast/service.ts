@@ -183,6 +183,9 @@ function templateSummary(facts: SummaryFacts): string {
   return parts.join(' ');
 }
 
+const summaryCache = new Map<string, { text: string; source: 'ai'; timestamp: number }>();
+const SUMMARY_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 async function buildSummary(
   facts: SummaryFacts,
 ): Promise<{ text: string; source: 'ai' | 'template' }> {
@@ -190,6 +193,12 @@ async function buildSummary(
   if (!apiKey) {
     console.warn('Groq API key is not configured; using template cash forecast summary');
     return { text: templateSummary(facts), source: 'template' };
+  }
+
+  const cacheKey = JSON.stringify(facts);
+  const cached = summaryCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < SUMMARY_CACHE_TTL_MS) {
+    return { text: cached.text, source: 'ai' };
   }
 
   try {
@@ -207,6 +216,8 @@ async function buildSummary(
     if (!text) {
       throw new Error('Empty summary from Groq model');
     }
+
+    summaryCache.set(cacheKey, { text, source: 'ai', timestamp: Date.now() });
     return { text, source: 'ai' };
   } catch (err) {
     console.warn('Cash forecast AI summary failed; using template', err);

@@ -689,9 +689,39 @@ function unwrap(payload: any): any {
   return payload;
 }
 
-async function http(url: string, init?: RequestInit): Promise<any> {
+// Fast in-memory SWR cache for GET requests to eliminate navigation lag
+const apiGetCache = new Map<string, { data: unknown; timestamp: number }>();
+const CACHE_TTL_MS = 15_000; // 15 seconds fresh
+
+export function invalidateApiCache(prefix?: string) {
+  if (!prefix) {
+    apiGetCache.clear();
+    return;
+  }
+  for (const key of apiGetCache.keys()) {
+    if (key.startsWith(prefix)) {
+      apiGetCache.delete(key);
+    }
+  }
+}
+
+async function http<T = any>(url: string, init?: RequestInit): Promise<T> {
   // No database exists during the preview — answer locally.
   if (__NEXEN_IS_MOCK__) return __nexenMockResponse(url, init);
+
+  const isGet = !init?.method || init.method.toUpperCase() === 'GET';
+
+  // Check cache for instant navigation response
+  if (isGet) {
+    const cached = apiGetCache.get(url);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      return cached.data as T;
+    }
+  } else {
+    // Invalidate cache on mutations (POST, PATCH, DELETE, PUT)
+    invalidateApiCache();
+  }
+
   // Unified-Next: same-origin relative URLs. Auth is DUAL — the login route
   // sets an httpOnly session cookie AND returns the JWT, which the login form
   // persists via @/lib/authToken. We attach it as `Authorization: Bearer` here
@@ -710,8 +740,14 @@ async function http(url: string, init?: RequestInit): Promise<any> {
   if (!res.ok) {
     throw new ApiError(res.status, await res.text().catch(() => res.statusText));
   }
-  if (res.status === 204) return undefined;
-  return unwrap(await res.json().catch(() => undefined));
+  if (res.status === 204) return undefined as unknown as T;
+  const data = unwrap(await res.json().catch(() => undefined)) as T;
+
+  if (isGet && data !== undefined) {
+    apiGetCache.set(url, { data, timestamp: Date.now() });
+  }
+
+  return data;
 }
 
 export async function getCustomers(query?: { includeArchived?: boolean }): Promise<Customer[]> {

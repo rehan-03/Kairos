@@ -131,6 +131,9 @@ function parseChannel(value: unknown): ReminderChannel {
   return value === 'clipboard' ? 'clipboard' : 'whatsapp';
 }
 
+const reminderDraftCache = new Map<string, { text: string; timestamp: number }>();
+const REMINDER_DRAFT_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 async function draftWithAi(
   tone: ReminderTone,
   language: ReminderLanguage,
@@ -141,6 +144,13 @@ async function draftWithAi(
     console.warn('Groq API key is not configured; using the reminder template.');
     return null;
   }
+
+  const cacheKey = `${tone}:${language}:${f.amountText}:${f.dueDateText}:${f.upiId}`;
+  const cached = reminderDraftCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < REMINDER_DRAFT_CACHE_TTL_MS) {
+    return cached.text;
+  }
+
   try {
     const text = await createGroqChatCompletion({
       model: AI_MODEL,
@@ -156,6 +166,8 @@ async function draftWithAi(
     });
 
     if (!text || text.length > MAX_MESSAGE_LENGTH || !hasAllFigures(text, f)) return null;
+
+    reminderDraftCache.set(cacheKey, { text, timestamp: Date.now() });
     return text;
   } catch (err) {
     console.warn('Groq reminder draft failed; using the template.', err);

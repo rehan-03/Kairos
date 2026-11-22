@@ -74,6 +74,7 @@ model Customer {
   invoices          Invoice[]    @relation("CustomerInvoices")
   payments          Payment[]    @relation("CustomerPayments")
 
+  @@index([archivedAt])
   @@map("customers")
 }
 
@@ -100,6 +101,7 @@ model Invoice {
 
   @@index([customerId])
   @@index([status])
+  @@index([dueDate])
   @@map("invoices")
 }
 
@@ -118,6 +120,7 @@ model Payment {
 
   @@index([invoiceId])
   @@index([customerId])
+  @@index([paidOn])
   @@map("payments")
 }
 
@@ -150,6 +153,8 @@ model Bill {
   recurrence  BillRecurrence @default(one_off)
   archivedAt  DateTime?      @map("archived_at") @db.Timestamp(3)
 
+  @@index([dueDate])
+  @@index([archivedAt])
   @@map("bills")
 }
 
